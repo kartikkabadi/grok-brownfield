@@ -41,6 +41,6 @@ Do not duplicate the entire skill in README; link to `SKILL.md` for internals.
 
 ## Do not
 
-- Reference `kartikkabadi-max` or other internal hostnames
+- Reference internal hostnames (e.g. `internal.example.com`, `<org>-internal`) in examples
 - Commit `/tmp/grok-*` state or design drafts
 - Change verify scripts to pass on a weakened skill without updating tests intentionally

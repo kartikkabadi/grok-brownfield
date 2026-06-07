@@ -30,7 +30,28 @@ Please do **not** open PRs that:
    cp -r . ~/.grok/skills/brownfield
    ```
 
-3. Ensure bundled Grok skills exist at `~/.grok/bundled/skills/` (required for verify scripts).
+3. **Bundled skills for verify** — choose one:
+
+   | Option | When to use |
+   |--------|-------------|
+   | **Fixture (default for CI)** | No Grok install — uses `fixtures/bundled-skills/` automatically |
+   | **Local Grok Build** | Full runtime parity — `~/.grok/bundled/skills/` is preferred when present |
+   | **Explicit override** | `export BUNDLED_SKILLS_ROOT=/path/to/bundled/skills` |
+
+   Validate the fixture:
+
+   ```bash
+   bash scripts/bootstrap_bundled_fixture.sh
+   ```
+
+   Refresh fixture files from a local Grok install (optional):
+
+   ```bash
+   bash scripts/bootstrap_bundled_fixture.sh --refresh
+   ```
+
+   Resolution order is implemented in `scripts/resolve_bundled_root.sh`:
+   `BUNDLED_SKILLS_ROOT` → `~/.grok/bundled/skills` → `fixtures/bundled-skills`.
 
 ## Verification (required before PR)
 
@@ -41,10 +62,19 @@ bash scripts/verify_skill.sh
 bash tests/test_verify_skill.sh
 ```
 
-- `verify_skill.sh` — frontmatter, required headings, design-mandated patterns, persona resolution, `memory.py` snapshot
+- `verify_skill.sh` — frontmatter, required headings, normative wiring patterns, persona resolution, `memory.py` snapshot
 - `test_verify_skill.sh` — negative/regression cases (missing patterns, stale messaging, broken wiring)
 
-If you change `SKILL.md`, add or update grep patterns in `verify_skill.sh` when the change is normative (not cosmetic).
+### Verify script notes
+
+- **Pattern categories** are documented in `verify_skill.sh`: `NORMATIVE_WIRING`, `STRUCTURAL_GUARDS`, `PROSE_GUARDS`.
+- Add or update grep patterns when a `SKILL.md` change is **normative** (not cosmetic prose).
+- **Frontmatter quality** (description wording, flag ordering) is intentionally out-of-scope beyond presence checks.
+- **Skills-list override** persona resolution is a known limitation — only bundled fallback paths are tested.
+
+### SKIP behavior
+
+`test_verify_skill.sh` may print `SKIP` for the unreadable-cwd `memory.py` test on permissive filesystems. SKIP is not a failure. If you change memory path logic, run that test on a stricter environment or add an explicit regression case.
 
 ## Pull request checklist
 
@@ -56,7 +86,7 @@ If you change `SKILL.md`, add or update grep patterns in `verify_skill.sh` when 
 
 ## Reporting issues
 
-Include when possible:
+Use the [bug report template](.github/ISSUE_TEMPLATE/bug_report.yml) when possible. Include:
 
 - Grok Build environment (if known)
 - Invocation string (redact paths/secrets)
@@ -65,4 +95,4 @@ Include when possible:
 
 ## Code of conduct
 
-Be constructive and precise. This skill coordinates long-running agent workflows — reproducibility and safety matter more than speed.
+See [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md). Be constructive and precise — reproducibility and safety matter more than speed for long-running agent workflows.

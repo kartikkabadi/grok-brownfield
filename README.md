@@ -1,14 +1,46 @@
 # grok-brownfield
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Grok Build](https://img.shields.io/badge/Grok%20Build-skill-green)](https://github.com/kartikkabadi/grok-brownfield)
-[![Verified](https://img.shields.io/badge/verify-passing-brightgreen)](#verification)
+[![Grok Build](https://img.shields.io/badge/Grok%20Build-skill-green)](https://docs.x.ai/build/features/skills-plugins-marketplaces)
+[![Verify](https://github.com/kartikkabadi/grok-brownfield/actions/workflows/verify.yml/badge.svg)](https://github.com/kartikkabadi/grok-brownfield/actions/workflows/verify.yml)
 
 **Audit, validate, and improve existing codebases you can run but cannot confidently judge.**
 
-`/brownfield` is a [Grok Build](https://x.ai) agent skill for **brownfield** projects — apps and repos that already exist. You know how to use the product; you are not sure whether the architecture, tests, security, or implementation are actually correct. Brownfield treats existing code as **evidence, not ground truth**, runs parallel specialist analysis, produces a consolidated improvement design doc, and optionally executes the plan as isolated PRs.
+`/brownfield` is a [Grok Build](https://docs.x.ai/build/overview) agent skill for **brownfield** projects — apps and repos that already exist. You know how to use the product; you are not sure whether the architecture, tests, security, or implementation are actually correct. Brownfield treats existing code as **evidence, not ground truth**, runs parallel specialist analysis, produces a consolidated improvement design doc, and optionally executes the plan as isolated PRs.
 
 > **For non-technical builders:** If you can demo the app but worry something is “built wrong” under the hood, brownfield is your structured second opinion — without you reading every file.
+
+---
+
+## Before you begin
+
+| Requirement | Why |
+|-------------|-----|
+| **[Grok Build](https://docs.x.ai/build/overview)** with `spawn_subagent` | Orchestrator delegates all substantive work |
+| **Git workspace** | Analysis and execute paths expect a repo |
+| **Bundled Grok skills** (`~/.grok/bundled/skills/`) | Personas: design-doc-writer, design-doc-reviewer, implementer, reviewer, security-auditor |
+| **AskQuestion** (or equivalent) | Assumption escalation in Phase 2a |
+| **Optional:** `gt` (Graphite), `gh` (GitHub CLI) | Stack assembly and `--auto-pr` |
+
+**Windows:** Paths below use Unix `~/.grok/...`. On Windows, use `%USERPROFILE%\.grok\skills\brownfield` (or run Grok Build under WSL with the Unix paths).
+
+**Contributors / CI:** Verify scripts also work with the repo fixture at `fixtures/bundled-skills/` — no full Grok install required. See [Verification](#verification).
+
+---
+
+## Non-technical quick path
+
+Just want a health check on a project you can run but do not fully trust?
+
+1. **Install** the skill (clone step below) and **reload Grok Build** (see Quick start).
+2. **Open your project** in Grok Build so the agent can see the repo.
+3. In the **Grok Build chat input** (where you normally talk to the agent), type:
+   ```
+   /brownfield ./path-to-your-project
+   ```
+   Use the folder path to your codebase — ask a developer for the exact path if unsure.
+4. **Wait for the design doc** — brownfield stops after the improvement plan unless you add `--execute`.
+5. **Involve a developer** when the report mentions PRs, security findings, or `--execute`.
 
 ---
 
@@ -29,30 +61,54 @@
 
 ### Install (Grok Build)
 
-Copy or clone this skill into your Grok skills directory:
+**Recommended — full repo** (includes verify scripts for development):
 
 ```bash
-git clone https://github.com/kartikkabadi/grok-brownfield.git ~/.grok/skills/brownfield
+git clone https://github.com/kartikkabadi/grok-brownfield.git
+cd grok-brownfield
+cp -r . ~/.grok/skills/brownfield/
 ```
 
-Or copy only the skill file:
+**Skill file only** (runtime minimum — no local verify tooling):
 
 ```bash
+git clone https://github.com/kartikkabadi/grok-brownfield.git
+cd grok-brownfield
 mkdir -p ~/.grok/skills/brownfield
 cp SKILL.md ~/.grok/skills/brownfield/
 ```
 
-Restart or reload Grok Build so the skill is discovered.
+**Reload Grok Build** so the skill is discovered:
+
+1. Save any open work in your Grok Build session.
+2. **Restart the Grok Build app**, or use your environment’s **Reload skills / Refresh skills** action (often in settings or the command palette).
+3. Confirm `/brownfield` appears in skill autocomplete when you type `/` in the agent chat input.
+
+If the skill does not appear, verify `~/.grok/skills/brownfield/SKILL.md` exists and reload again.
 
 ### Run
 
-In Grok Build, invoke:
+**Where to type this:** In the **Grok Build agent chat input** (the main prompt where you instruct the coding agent) — not your system shell, unless your Grok setup documents a CLI entry point.
+
+Point `project path` at the root of the Git repo you want audited (the folder that contains `.git`):
 
 ```
 /brownfield ./my-repo
 /brownfield --effort 3 ./my-repo "focus on checkout flow"
 /brownfield --execute --effort 4 ./my-repo
 ```
+
+---
+
+## Glossary
+
+| Term | Meaning |
+|------|---------|
+| **PR** | Pull request — a proposed code change on GitHub (or similar) |
+| **Worktree** | An isolated copy of the repo used to implement one PR without touching your main checkout |
+| **Graphite (`gt`)** | Optional CLI for stacked PR workflows |
+| **DAG** | Directed acyclic graph — PR dependency order in the execution plan |
+| **Persona** | Specialist instructions loaded from bundled Grok skills (e.g. security-auditor) |
 
 ---
 
@@ -175,29 +231,18 @@ On resume, CLI `--effort` / `--execute` flags are ignored; values are restored f
 
 ---
 
-## Requirements
-
-| Requirement | Why |
-|-------------|-----|
-| **Grok Build** with `spawn_subagent` | Orchestrator delegates all substantive work |
-| **Git workspace** | Analysis and execute paths expect a repo |
-| **Bundled Grok skills** (`~/.grok/bundled/skills/`) | Personas: design-doc-writer, design-doc-reviewer, implementer, reviewer, security-auditor |
-| **AskQuestion** (or equivalent) | Assumption escalation in Phase 2a |
-| **Optional:** `gt` (Graphite), `gh` (GitHub CLI) | Stack assembly and `--auto-pr` |
-
----
-
 ## Verification
 
-Structure and regression checks ship with the repo:
+Structure and regression checks ship with the repo. **GitHub Actions** runs the same scripts on every push/PR (see [`.github/workflows/verify.yml`](.github/workflows/verify.yml)).
 
 ```bash
 cd grok-brownfield
-bash scripts/verify_skill.sh      # structure, patterns, bundled persona resolution
-bash tests/test_verify_skill.sh   # negative / regression tests
+bash scripts/bootstrap_bundled_fixture.sh   # validates fixtures/bundled-skills
+bash scripts/verify_skill.sh                # structure, patterns, persona resolution
+bash tests/test_verify_skill.sh             # negative / regression tests
 ```
 
-Both should exit `0`. CI-friendly: no network required beyond local `~/.grok/bundled/skills/`.
+Both verify commands should exit `0`. CI uses `fixtures/bundled-skills/` via `BUNDLED_SKILLS_ROOT`; locally, scripts prefer `~/.grok/bundled/skills/` when installed, then fall back to the fixture.
 
 ---
 
@@ -205,15 +250,26 @@ Both should exit `0`. CI-friendly: no network required beyond local `~/.grok/bun
 
 ```
 grok-brownfield/
-├── README.md          # This file
-├── SKILL.md           # Full skill specification (~2000 lines)
-├── LICENSE            # MIT
+├── README.md
+├── SKILL.md              # Full skill specification (~2000 lines)
+├── LICENSE               # MIT
+├── NOTICE                # Runtime bundled-skills dependency boundary
 ├── CONTRIBUTING.md
+├── CODE_OF_CONDUCT.md
+├── SECURITY.md
 ├── AGENTS.md
+├── fixtures/
+│   └── bundled-skills/   # Portable verify fixture (CI + contributors)
 ├── scripts/
-│   └── verify_skill.sh
-└── tests/
-    └── test_verify_skill.sh
+│   ├── verify_skill.sh
+│   ├── resolve_bundled_root.sh
+│   └── bootstrap_bundled_fixture.sh
+├── tests/
+│   └── test_verify_skill.sh
+└── .github/
+    ├── workflows/verify.yml
+    ├── ISSUE_TEMPLATE/
+    └── pull_request_template.md
 ```
 
 ---
@@ -234,10 +290,12 @@ See [SKILL.md](./SKILL.md) for the complete orchestration spec.
 
 ## Contributing
 
-Issues and PRs welcome. See [CONTRIBUTING.md](./CONTRIBUTING.md) and [AGENTS.md](./AGENTS.md).
+Issues and PRs welcome. See [CONTRIBUTING.md](./CONTRIBUTING.md), [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md), and [AGENTS.md](./AGENTS.md).
 
 ---
 
 ## License
 
 MIT © [Kartik Kabadi](https://github.com/kartikkabadi) — see [LICENSE](./LICENSE).
+
+Runtime bundled Grok personas are **not** covered by this repo’s MIT license — see [NOTICE](./NOTICE).

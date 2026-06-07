@@ -1,0 +1,36 @@
+# SPDX-License-Identifier: MIT
+name: Verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Bootstrap bundled-skills fixture
+        run: bash scripts/bootstrap_bundled_fixture.sh
+
+      - name: Run verify_skill.sh
+        env:
+          BUNDLED_SKILLS_ROOT: ${{ github.workspace }}/fixtures/bundled-skills
+        run: bash scripts/verify_skill.sh
+
+      - name: Run test_verify_skill.sh
+        env:
+          BUNDLED_SKILLS_ROOT: ${{ github.workspace }}/fixtures/bundled-skills
+        run: bash tests/test_verify_skill.sh
+
+      - name: Note when using fixture (no local Grok bundle)
+        if: success()
+        run: |
+          echo "CI verified against fixtures/bundled-skills (portable stub)."
+          echo "Runtime brownfield still requires a full Grok Build install with bundled personas."

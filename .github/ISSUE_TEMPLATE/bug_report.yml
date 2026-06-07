@@ -1,0 +1,53 @@
+name: Bug report
+description: Report confusing behavior, verify gaps, or skill orchestration issues
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Please redact secrets, tokens, and internal hostnames.
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Short summary of the unexpected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: invocation
+    attributes:
+      label: Invocation (redacted)
+      description: The `/brownfield` command you used (replace real paths with placeholders)
+      placeholder: "/brownfield --effort 3 ./my-repo"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: input
+    id: brownfield_id
+    attributes:
+      label: BROWNFIELD_ID (if known)
+      placeholder: a1b2c3d4
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Grok Build version or platform if known
+      placeholder: macOS, Grok Build with bundled skills installed
+  - type: checkboxes
+    id: verify
+    attributes:
+      label: Verification
+      options:
+        - label: I ran `bash scripts/verify_skill.sh` and `bash tests/test_verify_skill.sh` (if applicable)

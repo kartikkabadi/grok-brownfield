@@ -1,0 +1,30 @@
+grok-brownfield — MIT License
+
+Copyright (c) 2026 Kartik Kabadi
+
+Files in this repository are licensed under the MIT License (see LICENSE).
+
+Third-party runtime dependencies (not shipped in this repo)
+-----------------------------------------------------------
+
+The `/brownfield` skill at runtime resolves personas and helpers from the
+**Grok Build bundled skills tree**, typically installed at:
+
+  ~/.grok/bundled/skills/
+
+Required bundled paths include:
+
+  implement/SKILL.md
+  implement/scripts/memory.py
+  shared/personas/{design-doc-writer,design-doc-reviewer,implementer,reviewer,security-auditor}.md
+
+Those files are maintained and licensed by xAI / Grok Build, not by this
+repository. This project's MIT license covers only the files committed here
+(SKILL.md orchestration spec, verify scripts, docs, and CI fixtures).
+
+CI fixture
+----------
+
+`fixtures/bundled-skills/` contains minimal stubs so verify scripts can run
+without a full Grok install. Stubs are MIT-licensed portions of this repo and
+are **not** substitutes for production bundled skills.

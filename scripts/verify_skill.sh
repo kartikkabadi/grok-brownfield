@@ -1,6 +1,17 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
 # verify_skill.sh — structure verification for /brownfield skill (PR 3 + PR 2b/2c)
-# Validates bundled fallback paths only; does not exercise skills-list override resolution.
+#
+# Validates bundled fallback paths only; does not exercise skills-list override
+# resolution (known limitation — see CONTRIBUTING.md).
+#
+# Pattern categories:
+#   - NORMATIVE_WIRING: tokens that must exist for orchestration correctness
+#   - STRUCTURAL_GUARDS: anchored headings and phase tokens
+#   - PROSE_GUARDS: narrowly scoped phrases tied to spec invariants (minimize edits)
+#
+# Frontmatter description/quality beyond presence is intentionally out-of-scope.
+#
 # Run: bash scripts/verify_skill.sh
 # Also run: bash tests/test_verify_skill.sh
 umask 077
@@ -8,7 +19,8 @@ set -euo pipefail
 
 SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SKILL_MD="${SKILL_DIR}/SKILL.md"
-BUNDLED_SKILLS_ROOT="${HOME}/.grok/bundled/skills"
+RESOLVE_SCRIPT="${SKILL_DIR}/scripts/resolve_bundled_root.sh"
+BUNDLED_SKILLS_ROOT="$("${RESOLVE_SCRIPT}")"
 
 fail() {
   echo "FAIL: $*" >&2
@@ -20,7 +32,7 @@ pass() {
 }
 
 grep_skill() {
-  grep -qE "$1" "${SKILL_MD}" || fail "SKILL.md missing pattern: $1"
+  grep -qE -- "$1" "${SKILL_MD}" || fail "SKILL.md missing pattern: $1"
 }
 
 # macOS pipefail: grep -q closes the pipe early; use process substitution.
@@ -28,7 +40,18 @@ frontmatter_grep() {
   grep -q "$@" <(sed -n "${FM_START},${FM_END}p" "${SKILL_MD}")
 }
 
+extract_section() {
+  local start_pattern="$1"
+  local end_pattern="$2"
+  awk -v start="${start_pattern}" -v end="${end_pattern}" '
+    $0 ~ start { capture=1; next }
+    capture && $0 ~ end { exit }
+    capture { print }
+  ' "${SKILL_MD}"
+}
+
 [[ -f "${SKILL_MD}" ]] || fail "SKILL.md not found at ${SKILL_MD}"
+[[ -x "${RESOLVE_SCRIPT}" ]] || fail "resolve_bundled_root.sh not executable"
 
 # --- Frontmatter checks (fence-based) ---
 FM_START=$(grep -n '^---$' "${SKILL_MD}" | head -1 | cut -d: -f1)
@@ -53,7 +76,7 @@ for flag in '--resume' '--execute' '--delegate-execute' '--no-graphite' '--auto-
 done
 pass "frontmatter fields and flags present"
 
-# --- Required phase / section headings (anchored) ---
+# --- Required phase / section headings (STRUCTURAL_GUARDS — anchored) ---
 REQUIRED_HEADING_PATTERNS=(
   '^## Tool-Call Discipline'
   '^## Todo Scaffold'
@@ -64,7 +87,7 @@ REQUIRED_HEADING_PATTERNS=(
   '^## Phase 2a: Assumption Escalation'
   '^## Phase 3: Consolidated Design Document'
   '^## Phase 4: Design Review Loop'
-  '^## Phase 4b:'
+  '^## Phase 4b: Summarize and Ask Open Questions'
   '^## Phase 5: Execution'
   '^## Phase 6: Post-Implementation Verification'
   '^## Memory Flush'
@@ -96,11 +119,11 @@ REQUIRED_HEADING_PATTERNS=(
 )
 
 for pattern in "${REQUIRED_HEADING_PATTERNS[@]}"; do
-  grep -qE "${pattern}" "${SKILL_MD}" || fail "required heading missing: ${pattern}"
+  grep -qE -- "${pattern}" "${SKILL_MD}" || fail "required heading missing: ${pattern}"
 done
 pass "required phase headings present (anchored)"
 
-# --- Design-mandated content checks ---
+# --- NORMATIVE_WIRING content checks (structural tokens preferred) ---
 grep_skill '/bundled/skills/'
 grep_skill '\$HOME/\.grok/bundled/skills'
 grep_skill 'shared/personas'
@@ -118,7 +141,6 @@ grep_skill '# Assumptions Register'
 grep_skill 'get_command_or_subagent_output'
 grep_skill '\[verify\]'
 grep_skill 'post-verify'
-grep_skill 'min\(max'
 grep_skill 'max_concurrent = min\(max'
 grep_skill 'sort selected_optional by PRIORITY'
 grep_skill 'intent_text'
@@ -127,9 +149,11 @@ grep_skill 'intent_only'
 grep_skill 'in addition to effort-mandated'
 grep_skill 'cleanup_deliverables'
 grep -qF -- '--cleanup-deliverables' "${SKILL_MD}" \
-  || fail "SKILL.md missing pattern: --cleanup-deliverables"
+  || fail "SKILL.md missing literal flag: --cleanup-deliverables"
 grep -qF -- '--delegate-execute' "${SKILL_MD}" \
-  || fail "SKILL.md missing pattern: --delegate-execute"
+  || fail "SKILL.md missing literal flag: --delegate-execute"
+grep -qF -- '--delegate-execute requires --execute' "${SKILL_MD}" \
+  || fail "SKILL.md missing pattern: --delegate-execute requires --execute"
 grep_skill 'IGNORE persona severity labels'
 grep_skill '\[REDACTED\]'
 grep_skill 'chmod 600'
@@ -164,8 +188,6 @@ grep_skill 'Building `specialist_configs`'
 grep_skill 'reviewer_configs'
 grep_skill 'Building reviewer_configs'
 grep_skill 'suffix_map\[specialist\]'
-grep -qF -- '--delegate-execute requires --execute' "${SKILL_MD}" \
-  || fail "SKILL.md missing pattern: --delegate-execute requires --execute"
 grep_skill 'kill_command_or_subagent'
 grep_skill 'You are a thorough test engineer'
 grep_skill 'Plan Alignment Specialist'
@@ -184,22 +206,25 @@ grep_skill 'This run delegated to execute-plan'
 grep_skill 'tests\.md'
 grep_skill 'design_doc_file'
 grep_skill 'Memory timing \(single flush per run\)'
-grep_skill 'Rule 1.*fetch without'
+grep_skill 'Rule 1 — fetch without a destination refspec'
 grep_skill 'commit_sha.*authoritative'
 grep_skill 'grok worktree rm --force'
 grep_skill 'Plain-git mode'
 grep_skill 'Graphite mode'
 grep_skill 'total_slots = 5'
 grep_skill 'total_slots = 6'
-grep_skill 'Scales \*\*both\*\* analysis'
+grep_skill '--effort.*Scales \*\*both\*\* analysis'
 grep_skill 'PRIMARY'
 grep_skill 'FALLBACK'
 grep_skill 'Phase 5 Step 7'
 pass "design-mandated content patterns present"
 
-# Implementer must be fail-fast (not warn-only)
-grep_skill 'implementer.*fail-fast|fail-fast.*implementer|Required \(fail-fast\).*implementer'
-if grep -qE 'implementer.*warn-only|warn-only.*implementer' "${SKILL_MD}"; then
+# Implementer must be fail-fast (scoped to Persona Resolution — not whole SKILL.md)
+PERSONA_SECTION="$(extract_section '^### Persona Resolution' '^### ')"
+[[ -n "${PERSONA_SECTION}" ]] || fail "Persona Resolution section missing"
+echo "${PERSONA_SECTION}" | grep -qE 'Required \(fail-fast\).*implementer|implementer.*fail-fast' \
+  || fail "implementer persona must be fail-fast in Persona Resolution"
+if echo "${PERSONA_SECTION}" | grep -qE 'implementer.*warn-only|warn-only.*implementer'; then
   fail "implementer persona must be fail-fast, not warn-only"
 fi
 pass "implementer persona fail-fast"
@@ -223,9 +248,10 @@ FINAL_BULLETS=$(awk '/^## Final Report/,/^## In-Progress Reporting/' "${SKILL_MD
 [[ "${FINAL_BULLETS}" -ge 14 ]] || fail "Final Report needs >= 14 bullets (found ${FINAL_BULLETS})"
 pass "Final Report has ${FINAL_BULLETS} bullets"
 
-# --- Bundled skills root (fallback path only) ---
-[[ -d "${BUNDLED_SKILLS_ROOT}" ]] || fail "bundled_skills_root not found: ${BUNDLED_SKILLS_ROOT}"
-pass "bundled_skills_root exists: ${BUNDLED_SKILLS_ROOT}"
+# --- Bundled skills root (fallback path only; override resolution not tested) ---
+[[ -d "${BUNDLED_SKILLS_ROOT}" ]] \
+  || fail "bundled_skills_root not found (set BUNDLED_SKILLS_ROOT or install Grok Build)"
+pass "bundled_skills_root exists (resolved)"
 
 [[ -f "${BUNDLED_SKILLS_ROOT}/implement/SKILL.md" ]] \
   || fail "bundled implement/SKILL.md missing"
@@ -241,14 +267,14 @@ PERSONAS=(
 
 for persona in "${PERSONAS[@]}"; do
   persona_path="${BUNDLED_SKILLS_ROOT}/shared/personas/${persona}.md"
-  [[ -f "${persona_path}" ]] || fail "persona missing: ${persona_path}"
-  [[ -s "${persona_path}" ]] || fail "persona empty: ${persona_path}"
-  pass "persona resolves: ${persona_path}"
+  [[ -f "${persona_path}" ]] || fail "persona missing: ${persona}"
+  [[ -s "${persona_path}" ]] || fail "persona empty: ${persona}"
+  pass "persona resolves: ${persona}"
 done
 
 # --- memory.py snapshot with JSON type validation ---
 MEMORY_HELPER="${BUNDLED_SKILLS_ROOT}/implement/scripts/memory.py"
-[[ -f "${MEMORY_HELPER}" ]] || fail "memory.py missing: ${MEMORY_HELPER}"
+[[ -f "${MEMORY_HELPER}" ]] || fail "memory.py missing"
 
 GIT_CWD="${SKILL_DIR}"
 while [[ "${GIT_CWD}" != "/" ]]; do
@@ -266,7 +292,7 @@ if ! git -C "${GIT_CWD}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
 fi
 
 SNAPSHOT_OUT=$(cd "${GIT_CWD}" && python3 "${MEMORY_HELPER}" snapshot) \
-  || fail "memory.py snapshot failed (exit != 0) from ${GIT_CWD}"
+  || fail "memory.py snapshot failed (exit != 0)"
 
 [[ -n "${MEM_TEST_DIR}" ]] && rm -rf "${MEM_TEST_DIR}"
 
@@ -285,7 +311,7 @@ if not isinstance(data["exists"], bool):
 print("ok")
 ' || fail "memory.py snapshot returned invalid JSON or wrong types"
 
-pass "memory.py snapshot exits 0 with valid typed JSON from git cwd (${GIT_CWD})"
+pass "memory.py snapshot exits 0 with valid typed JSON"
 
 echo ""
 echo "All brownfield skill structure checks passed."

@@ -10,6 +10,7 @@ Thumbs.db
 *~
 
 # Local / temp artifacts (never commit run outputs)
+# Note: /tmp/ ignores a top-level tmp/ directory in this repo (not system /tmp).
 /tmp/
 grok-brownfield-state-*.json
 grok-brownfield-*.md

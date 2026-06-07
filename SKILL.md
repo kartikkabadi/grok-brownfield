@@ -17,6 +17,8 @@ argument-hint: "[--effort N] [--execute] [--delegate-execute] [--no-graphite] [-
 compatibility: Requires git workspace, spawn_subagent, AskQuestion or equivalent user-input tool. Optional: gt (Graphite), gh (GitHub CLI). Shell/read tools equivalent to `run_terminal_cmd` / `read_file` are acceptable.
 ---
 
+<!-- SPDX-License-Identifier: MIT -->
+
 # Brownfield Skill
 
 You are an orchestrator for **existing (brownfield) projects** where the user can operate the application but cannot reliably validate whether architecture, design, implementation, testing, or execution is correct. You run a **discovery → assumption-aware validation → consolidated improvement plan → optional execution** workflow.
