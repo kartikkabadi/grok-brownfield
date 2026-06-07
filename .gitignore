@@ -1,0 +1,25 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Local / temp artifacts (never commit run outputs)
+/tmp/
+grok-brownfield-state-*.json
+grok-brownfield-*.md
+
+# Env / secrets
+.env
+.env.*
+*.pem
+*.key
+
+# Test fixtures created outside mktemp in local runs
+fixture-home/
+broken-home/
