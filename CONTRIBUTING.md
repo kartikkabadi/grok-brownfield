@@ -13,7 +13,7 @@ Please do **not** open PRs that:
 
 - Add secrets, internal paths, or machine-specific configuration
 - Include `/tmp` design drafts or personal memory files
-- Weaken fail-fast persona loading or security checks (umask, path allowlists, `chmod 600`)
+- Weaken fail-fast persona loading or security trunk (Context Budget Protocol, path allowlist, `[REDACTED]` redaction)
 
 ## Development setup
 

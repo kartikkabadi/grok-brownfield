@@ -85,18 +85,6 @@ sed -i '' 's/--resume //g' "${NO_RESUME_FLAG_DIR}/SKILL.md" 2>/dev/null \
   || sed -i 's/--resume //g' "${NO_RESUME_FLAG_DIR}/SKILL.md"
 expect_fail "missing --resume flag" "argument-hint must include --resume" bash "${NO_RESUME_FLAG_DIR}/scripts/verify_skill.sh"
 
-# --- Dropped chmod 600 pattern ---
-NO_CHMOD_DIR="${TMPROOT}/no-chmod"
-mkdir -p "${NO_CHMOD_DIR}/scripts"
-cp "${VERIFY}" "${NO_CHMOD_DIR}/scripts/verify_skill.sh"
-cp "${RESOLVE}" "${NO_CHMOD_DIR}/scripts/resolve_bundled_root.sh"
-chmod +x "${NO_CHMOD_DIR}/scripts/resolve_bundled_root.sh"
-cp -R "${SKILL_DIR}/fixtures" "${NO_CHMOD_DIR}/fixtures"
-cp "${SOURCE_SKILL}" "${NO_CHMOD_DIR}/SKILL.md"
-sed -i '' '/chmod 600/d' "${NO_CHMOD_DIR}/SKILL.md" 2>/dev/null \
-  || sed -i '/chmod 600/d' "${NO_CHMOD_DIR}/SKILL.md"
-expect_fail "missing chmod 600" "chmod 600" bash "${NO_CHMOD_DIR}/scripts/verify_skill.sh"
-
 # --- Dropped Context Budget Protocol section (NO_CONTEXT_BUDGET) ---
 NO_CONTEXT_BUDGET_DIR="${TMPROOT}/no-context-budget"
 mkdir -p "${NO_CONTEXT_BUDGET_DIR}/scripts"

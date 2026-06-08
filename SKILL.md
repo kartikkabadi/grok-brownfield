@@ -3,7 +3,7 @@ name: brownfield
 description: >-
   First-principles audit and improvement for existing (brownfield) projects:
   effort-scaled orchestration decomposition with 400k-char context budget
-  protocol (excerpt-only specialist handoff; chmod ceremony removal planned),
+  protocol (excerpt-only specialist handoff),
   assumption-aware parallel analysis (architecture, code, tests, product-intent,
   docs, security), protocol-gated phases, limits/performance thinking,
   consolidated improvement design doc, design review loop until 0 open issues,
@@ -51,7 +51,7 @@ You are a **coordinator, not an implementer**. Your job matches `/design`, `/imp
 - Skip tool calls while narrating subagent launches
 - Treat workflow steps as optional guidance — phases, gates, reviewers, and validation requirements are **normative**
 
-**Orchestrator-only writes** (allowed): `intent_brief_file`, `orchestration_plan_file`, `spawn_log_file`, merged `assumptions_file` / `analysis_merged_file` / `source_merged_file` (when Phase 0b runs), `state_file`, `instructions_file`, execute-review merges, credential scrubbing, and chmod on orchestrator-owned artifacts.
+**Orchestrator-only writes** (allowed): `intent_brief_file`, `orchestration_plan_file`, `spawn_log_file`, merged `assumptions_file` / `analysis_merged_file` / `source_merged_file` (when Phase 0b runs), `state_file`, `instructions_file`, execute-review merges, and credential scrubbing.
 
 All substantive investigation and authoring is delegated to subagents with persona injection or prompt-only specialist templates.
 
@@ -109,7 +109,7 @@ Normative advancement — mirror `/design`, `/implement`, and `/execute-plan`. *
 2. **Gate before advance.** Before leaving a phase, run that phase's exit checklist. If any item fails, stay in-phase and fix — do not narrate forward progress.
 3. **Spawn-before-claim.** Any message that a subagent launched/resumed must pair with a `spawn_subagent` tool call in the same response (or tool result already in history).
 4. **Wait-before-merge.** After parallel specialist or reviewer batches, call `get_command_or_subagent_output(block=true)` for each task before reading outputs or merging.
-5. **Artifact existence.** Required output files must exist and be chmod `600` before the next phase starts.
+5. **Artifact existence and redaction.** Required output files must exist; secrets must be redacted as `[REDACTED]` before the next phase starts.
 6. **Effort visibility.** At setup and each major phase transition, report `effort N` and what it changes (specialist count, decomposition depth, reviewer slots).
 
 ### Phase gate matrix
@@ -195,7 +195,7 @@ Never inline full oversized files into specialist prompts.
 
 **Path (normative):** `/tmp/grok-brownfield-spawn-log-${BROWNFIELD_ID}.md`
 
-Persist as orchestrator-owned artifact (chmod 600). Append entry **before each spawn** (including Pass 0 workers):
+Persist as orchestrator-owned artifact. Append entry **before each spawn** (including Pass 0 workers):
 
 | Field | Required |
 |-------|----------|
@@ -317,14 +317,13 @@ Flags may appear anywhere in the argument string (not only prefix). Scan the ful
 1. **If `--resume <BROWNFIELD_ID>` present:**
    - Validate `BROWNFIELD_ID` matches `^[0-9a-f]{8}$`; reject otherwise with `"Invalid BROWNFIELD_ID format (expected 8 hex chars)"`
    - Set `resume_mode = true`
-   - **Minimal resume setup (always, before any writes):** `umask 077`; resolve `bundled_skills_root` (Phase 0 algorithm); load required personas fail-fast; set `execute_plan_skill_path = bundled_skills_root + "/execute-plan/SKILL.md"`; resolve `memory_helper_path`
+   - **Minimal resume setup (always, before any writes):** resolve `bundled_skills_root` (Phase 0 algorithm); load required personas fail-fast; set `execute_plan_skill_path = bundled_skills_root + "/execute-plan/SKILL.md"`; resolve `memory_helper_path`
    - Read `state_file` at `/tmp/grok-brownfield-state-${BROWNFIELD_ID}.json` (fixed prefix + validated suffix only — never interpolate raw user input into shell unquoted)
    - If `state_file` missing or corrupt JSON → reject: `"Cannot resume: state file not found or invalid"`
    - **Cross-check:** require `state.brownfield_id == BROWNFIELD_ID`; reject on mismatch: `"Cannot resume: state file brownfield_id mismatch"`
    - **Workspace validation:** verify `state.workspace_root` exists and `git -C "<workspace_root>" rev-parse --show-toplevel` matches stored value (or `pwd` for non-git); reject on mismatch: `"Cannot resume: workspace_root invalid or changed"`
-   - **Path allowlist validation** — before `read_file`, merge, or `chmod`, validate every persisted path field (`intent_brief_file`, `orchestration_plan_file`, `spawn_log_file`, `source_merged_file`, `assumptions_file`, `design_doc_file`, `analysis_merged_file`, `instructions_file`, `exec_summary_glob` if set): must be absolute, contain no `..`, and match `/tmp/grok-brownfield-*` prefix (delegated `exec_summary_glob` may use `/tmp/grok-exec-summary-*`). Reject on failure: `"Cannot resume: invalid artifact path in state file"`
+   - **Path allowlist validation** — before `read_file` or merge, validate every persisted path field (`intent_brief_file`, `orchestration_plan_file`, `spawn_log_file`, `source_merged_file`, `assumptions_file`, `design_doc_file`, `analysis_merged_file`, `instructions_file`, `exec_summary_glob` if set): must be absolute, contain no `..`, and match `/tmp/grok-brownfield-*` prefix (delegated `exec_summary_glob` may use `/tmp/grok-exec-summary-*`). Reject on failure: `"Cannot resume: invalid artifact path in state file"`
    - Validate `execute_plan_id` (if present) matches `^[0-9a-f]{8}$`; reject invalid IDs before any path interpolation
-   - **chmod 600** all validated artifact paths listed in `state_file` plus `state_file` itself (legacy runs may predate chmod)
    - **Re-validate `dag` nodes on resume:** each `pr.id` must match `^[a-z0-9-]+$`; each `pr.branch` must match `^brownfield/<BROWNFIELD_ID>-[0-9]+-[a-z0-9-]+$`; reject on failure
    - **Validate `worktree_path`** on each PR node (if set): absolute, no `..`, no shell metacharacters (`;|&$`()\`'"<>`), directory exists, is a git worktree under grok worktree root. Always double-quote in shell snippets
    - If `phase == "execute_delegated"`:
@@ -370,15 +369,8 @@ If `project_context` contains a filesystem path, `cd` to that path (via shell) b
 
 ## Phase 0: Setup
 
-**Skip full Phase 0 in `--resume` mode** except the minimal resume block in Invocation (umask only).
+**Skip full Phase 0 in `--resume` mode** except the minimal resume block in Invocation.
 
-### Restrictive umask (first command)
-
-```bash
-umask 077
-```
-
-Run before any artifact writes. Re-run after every `spawn_subagent` batch if subagents use separate write contexts.
 
 ### Run ID & Artifact Paths
 
@@ -485,14 +477,13 @@ Standard `spawn_subagent` parameters unless noted:
 
 **`past_issues_briefing` injection rule:** If `past_issues_briefing` is non-empty, insert it verbatim under `## Past Issue Patterns` in the prompt. If empty, omit that section entirely — never forward placeholder syntax to subagents.
 
-### Artifact Permission & Redaction (all writers)
+### Artifact Redaction (all writers)
 
 **Global rules for every specialist, writer, and orchestrator merge:**
 - Cite secrets at `file:line` only; redact values as `[REDACTED]` in all `/tmp` artifacts
 - **Scrub orchestrator-authored persistence** (`intent_brief_file`, `state_file` string fields, `instructions_file`, `user_instructions`): redact obvious credential patterns (API keys, tokens, `Bearer `, `sk-`, `AKIA`, high-entropy secrets) before write; reject paste of raw secrets in user messages when detected
-- After every artifact write, run `chmod 600 <path>` (orchestrator-owned writes and instruct specialists to chmod their output files)
 - User-facing messages: reference `file:line` only; never quote secret values verbatim
-- After each specialist pass completes, orchestrator verifies permissions (`stat` mode) and chmod-fixes any artifact not `600` before merge
+- **Path allowlist:** all persisted artifact paths must be absolute, contain no `..`, and match `/tmp/grok-brownfield-*` prefix (delegated `exec_summary_glob` may use `/tmp/grok-exec-summary-*`)
 
 ### Memory Helper
 
@@ -567,7 +558,7 @@ Report: `"Brownfield run ${BROWNFIELD_ID}, effort N, execute: true/false"`
 
 1. List source files from user intent; decompose into chunk workers (worker count = orchestrator decomposition of user-listed files, not fixed)
 2. Each worker reads assigned file(s) or file chunk in full; writes per-file principles
-3. Orchestrator merges into normative artifact at `/tmp/grok-brownfield-source-merged-${BROWNFIELD_ID}.md` (chmod 600)
+3. Orchestrator merges into normative artifact at `/tmp/grok-brownfield-source-merged-${BROWNFIELD_ID}.md`
 4. Record Pass 0 spawns in `spawn_log_file` before each worker launch
 5. Downstream specialists receive **excerpts** from merged artifact only — orchestrator never inlines full sources into specialist prompts
 
@@ -605,7 +596,7 @@ Report: `"Source principles merged (N files, M workers). Proceeding to intent di
 
 ### Intent Brief Schema
 
-Scrub user-provided text for credential patterns before writing. Write to `intent_brief_file` (chmod 600 after write):
+Scrub user-provided text for credential patterns before writing. Write to `intent_brief_file`:
 
 ```markdown
 # Intent Brief
@@ -666,7 +657,7 @@ Minimum questions if incomplete: outcome goal, what works vs broken, off-limits 
 `spawn_subagent` for `[intent]`:
 - `subagent_type`: `"general-purpose"`
 - `description`: `"[intent] Capture brownfield intent brief"`
-- Prompt: read `project_context` + conversation; write `intent_brief_file` per schema; chmod 600; list open questions.
+- Prompt: read `project_context` + conversation; write `intent_brief_file` per schema; list open questions.
 
 ### Exit
 
@@ -679,7 +670,7 @@ Report: `"Intent brief captured. Building orchestration decomposition plan (effo
 
 **Normative:** Run after Phase 1, before any analysis specialist spawns. This is the orchestrator's primary planning phase — decompose work, assign agents, identify dependencies/risks, and define validation gates. **Do not launch Phase 2 until this phase completes.**
 
-Read `intent_brief_file`. Build `specialist_configs` using the Phase 2 slot algorithm (deterministic — compute now, launch in Phase 2). Write `orchestration_plan_file` (chmod 600).
+Read `intent_brief_file`. Build `specialist_configs` using the Phase 2 slot algorithm (deterministic — compute now, launch in Phase 2). Write `orchestration_plan_file`.
 
 ### Orchestration Plan schema
 
@@ -894,7 +885,6 @@ Mirror `/implement` Step 2 parallel reviewers:
 4. **Required specialists (Architecture, Code):** failure → report error and stop
 5. **Optional specialists (Product-Intent, Tests, Security, Documentation, code-2):** failure → warn, remove from configs, continue
 6. Verify output files exist before checkpoint/merge
-7. Verify each output file mode is `600`; chmod-fix if needed before checkpoint/merge
 
 ### Two-Pass Launch Order
 
@@ -959,7 +949,6 @@ Steps:
 2. Merge into final `assumptions_file`
 3. Write final `analysis_merged_file` per schema above with source tags
 4. Evaluate blocking assumptions
-5. `chmod 600` merged artifacts
 
 Report: `"Analysis complete. N assumptions (W need confirmation)."`
 
@@ -1012,7 +1001,7 @@ Your subtask: <T-ID from Subtask Decomposition for [architecture]>
 For each claim: Statement, Evidence (file:line), Confidence, Impact if wrong
 
 ## Artifact security
-Cite file:line only; redact secret values as [REDACTED]. chmod 600 output file after write.
+Cite file:line only; redact secret values as [REDACTED].
 
 ## Output
 Write to: <analysis_dir>/architecture.md
@@ -1055,7 +1044,7 @@ Your subtask: <T-ID from Subtask Decomposition for [product-intent]>
 - UX-adjacent backend issues
 
 ## Artifact security
-Redact secrets; chmod 600 output.
+Redact secrets as [REDACTED].
 
 ## Output
 Write to: <analysis_dir>/product-intent.md
@@ -1084,7 +1073,7 @@ Read: <assumptions_file>
 
 ## Output
 Write to: <analysis_dir>/documentation.md
-Source tag: [Documentation]. chmod 600 after write.
+Source tag: [Documentation]. Redact secrets as [REDACTED].
 ```
 
 Launch: `description: "[documentation] Documentation fidelity audit"`, `background: true`.
@@ -1124,7 +1113,6 @@ Write to: <analysis_dir>/code.md
 - **Suggestion**: ...
 - **Status**: open
 ## Assumptions
-chmod 600 after write.
 ```
 
 Launch: `description: "[code] Brownfield code analysis"`, `background: true`.
@@ -1173,7 +1161,6 @@ Write to: <analysis_dir>/tests.md
 - **Suggestion**: ...
 - **Status**: open
 ## Assumptions
-chmod 600 after write.
 ```
 
 Launch: `description: "[tests] Test coverage analysis"`, `background: true`.
@@ -1219,7 +1206,6 @@ Write to: <analysis_dir>/security.md
 - **Suggestion**: ...
 - **Status**: open
 ## Assumptions
-chmod 600 after write.
 ```
 
 Launch: `description: "[security] Security audit"`, `background: true`.
@@ -1271,7 +1257,6 @@ Write to: /tmp/grok-brownfield-verify-${BROWNFIELD_ID}.md
 ## Follow-up PRs
 ...
 
-chmod 600 after write.
 ```
 
 ## Phase 3: Consolidated Design Document
@@ -1311,7 +1296,6 @@ Apply Excellence Doctrine: every PR should trace to an axiom or platonic-ideal g
 The PR Plan must be realistic for /execute-plan parsing (### PR N: headings).
 
 Redact secrets in design doc. Write to: <design_doc_file> and <summary_file>
-chmod 600 both files.
 ```
 
 Wait for completion. If subagent fails, report error and stop. Save `writer_subagent_id`.
@@ -1351,7 +1335,7 @@ Pay special attention to: assumptions escalation, evidence citations, PR Plan or
 - Every Key Decision cites evidence or explicit user-confirmed assumption
 
 ## Artifact security
-Redact secret values as [REDACTED] in review_file; cite file:line only. chmod 600 review_file after write.
+Redact secret values as [REDACTED] in review_file; cite file:line only.
 ```
 
 If fails → stop. Save `design_reviewer_subagent_id`. Increment `round_count`.
@@ -1430,7 +1414,7 @@ If user opts in at 4b.3 without `--execute` flag: instruct exact re-invocation c
 
 **Order (required):**
 
-1. **Build `instructions_file`** — read `intent_brief_file` + `assumptions_file`; extract Success Criteria + confirmed assumptions; scrub secrets; write to `/tmp/grok-brownfield-instructions-${BROWNFIELD_ID}.txt`; `chmod 600`. On resume rebuild: fail fast if source files missing.
+1. **Build `instructions_file`** — read `intent_brief_file` + `assumptions_file`; extract Success Criteria + confirmed assumptions; scrub secrets; write to `/tmp/grok-brownfield-instructions-${BROWNFIELD_ID}.txt`. On resume rebuild: fail fast if source files missing.
 2. **Write `state_file`** with current orchestrator values (not defaults). Set `phase` by path:
    - **Inline (default):** `phase: "execute_inline"`, `exec_summary_glob: "/tmp/grok-brownfield-exec-summary-${BROWNFIELD_ID}-*.md"`
    - **Delegation (`--delegate-execute`):** `phase: "execute_pending"`, `exec_summary_glob: null` until PLAN_ID known
@@ -1477,7 +1461,6 @@ If user opts in at 4b.3 without `--execute` flag: instruct exact re-invocation c
 
 Per-PR `dag.nodes[]` include `worktree_cleaned: false` (and all execute-plan node fields: `commit_sha`, `worktree_path`, `review_rounds`, `reviewer_configs`, etc.) as execution progresses.
 
-3. `chmod 600` state_file
 
 If `--execute` is false → skip state file; proceed to memory flush + Final Report.
 
@@ -1630,7 +1613,6 @@ Report: `"Created branches for <N> level-0 PRs. Starting implementation..."`
 
 #### Step 4: Execution Loop
 
-Re-run `umask 077` before each implementer/reviewer batch. After Step 5b merge, chmod-fix exec review artifacts.
 
 Ready-queue loop (mirror execute-plan):
 
@@ -1684,7 +1666,7 @@ These instructions apply to all work in this plan. Follow them strictly.
 <end if>
 
 ## Artifact security
-Cite secrets at file:line only; redact values as [REDACTED]. chmod 600 summary after write.
+Cite secrets at file:line only; redact values as [REDACTED].
 
 ## Instructions
 1. git checkout <pr.branch>
@@ -1803,7 +1785,7 @@ Review all modified files in the worktree (cwd).
 <end if>
 
 ## Artifact security
-Redact secrets as [REDACTED]; chmod 600 review file after write.
+Redact secrets as [REDACTED].
 
 Write review to: /tmp/grok-brownfield-exec-review-${BROWNFIELD_ID}-<pr.id>.md
 ### Issue N — Severity: bug|suggestion|nit
@@ -1844,7 +1826,7 @@ Review all modified files in the worktree (cwd).
 <end if>
 
 ## Artifact security
-Redact secrets as [REDACTED]; chmod 600 review file after write.
+Redact secrets as [REDACTED].
 
 Write review to: <reviewer_configs[i].review_file>
 ### Issue N — Severity: bug|suggestion|nit
@@ -1889,7 +1871,7 @@ Your review should focus on:
 Do NOT review for general code style, naming, or architecture — another reviewer handles that.
 
 ## Artifact security
-Redact secrets as [REDACTED]; chmod 600 review file after write.
+Redact secrets as [REDACTED].
 
 Write review to: <reviewer_configs[i].review_file>
 ### Issue N — Severity: bug|suggestion|nit
@@ -1943,7 +1925,7 @@ Only flag real, exploitable issues — not theoretical concerns.
 Do NOT review for general code style or test coverage — other reviewers handle that.
 
 ## Artifact security
-Redact secrets as [REDACTED]; chmod 600 review file after write.
+Redact secrets as [REDACTED].
 
 Write review to: <reviewer_configs[i].review_file>
 ### Issue N — Severity: bug|suggestion|nit
@@ -1989,7 +1971,7 @@ Your review should focus on:
 Do NOT review for code style, tests, or security — other reviewers handle that.
 
 ## Artifact security
-Redact secrets as [REDACTED]; chmod 600 review file after write.
+Redact secrets as [REDACTED].
 
 Write review to: <reviewer_configs[i].review_file>
 ### Issue N — Severity: bug|suggestion|nit
@@ -2007,7 +1989,7 @@ Wait via `get_command_or_subagent_output(block=true)` for each. Save `subagent_i
 
 **Effort ≥ 2:** Read individual files; merge into `/tmp/grok-brownfield-exec-review-${BROWNFIELD_ID}-<pr.id>.md` with source tags `[General]`, `[General-2]`, `[Tests]`, `[Security]`, `[Plan]`. Dedupe obvious duplicates; when in doubt keep both.
 
-Extract one-line descriptions → `issue_patterns` (dedupe). Add severities to `total_issues_by_severity`. Increment `pr.review_rounds`. `chmod 600` review files.
+Extract one-line descriptions → `issue_patterns` (dedupe). Add severities to `total_issues_by_severity`. Increment `pr.review_rounds`.
 
 - **0 open issues:** status `"completed"`, `completed_at`; return to Step 4 loop.
 - **Any open:** Step 5c fix cycle (no iteration cap — all severities must reach 0).
@@ -2244,7 +2226,7 @@ rm -f /tmp/grok-brownfield-exec-summary-${BROWNFIELD_ID}-*.md
 rm -f /tmp/grok-brownfield-exec-review-${BROWNFIELD_ID}-*.md
 ```
 
-**Keep `state_file`** for resume/history (strip volatile fields on `phase: "complete"` — see Inline Path Completion). `chmod 600` all retained artifacts.
+**Keep `state_file`** for resume/history (strip volatile fields on `phase: "complete"` — see Inline Path Completion).
 
 #### Inline Path Completion
 
@@ -2272,12 +2254,11 @@ When `delegate_execute_flag` is true:
    If `--instructions-file` unsupported, use `--instructions` with path reference only: `"See instructions at <instructions_file>"` — never embed scrubbed content in process args.
 6. Forward flags when set: append `--no-graphite` if `no_graphite_flag`; append `--auto-pr` if `auto_pr_flag`
 
-**Delegation start persistence:** When execute-plan Setup reports `PLAN_ID`, immediately persist `execute_plan_id`, `phase: "execute_delegated"`, `exec_summary_glob: "/tmp/grok-exec-summary-${execute_plan_id}-*.md"`; `chmod 600` state_file.
+**Delegation start persistence:** When execute-plan Setup reports `PLAN_ID`, immediately persist `execute_plan_id`, `phase: "execute_delegated"`, `exec_summary_glob: "/tmp/grok-exec-summary-${execute_plan_id}-*.md"`.
 
 **Delegated Path Completion:**
 
 1. Merge stats from `/tmp/grok-exec-plan-${execute_plan_id}.json` (`dag` node statuses, `pr_urls`, `prs_completed`, etc.)
-2. chmod-fix delegated artifacts
 3. Collect review patterns into `issue_patterns`
 4. **Phase 6 gate** — if `prs_completed < 1`, cancel `post-verify`; else set `phase: "verify"`, persist, run Phase 6
 5. Memory flush → Final Report → `phase: "complete"` (strip volatile fields); persist
@@ -2316,7 +2297,6 @@ Spawn `[verify]` subagent using **Verify Specialist** template. Include validate
 2. `get_command_or_subagent_output(task_id=..., block=true)`
 3. If subagent fails → report error; note in Final Report; still run memory flush
 4. Confirm `/tmp/grok-brownfield-verify-${BROWNFIELD_ID}.md` exists
-5. `chmod 600` verify file if needed
 
 Report: `"Post-implementation verification complete."`
 
@@ -2350,7 +2330,7 @@ Against `existing_patterns_snapshot`, match semantically equivalent descriptions
 
 ### Step 6c–6d
 
-Build JSON spec; write `/tmp/grok-brownfield-mem-${BROWNFIELD_ID}.json`; `chmod 600` immediately after write; `python3 <memory_helper_path> update < /tmp/grok-brownfield-mem-${BROWNFIELD_ID}.json`. Graceful degradation on failure.
+Build JSON spec; write `/tmp/grok-brownfield-mem-${BROWNFIELD_ID}.json`; `python3 <memory_helper_path> update < /tmp/grok-brownfield-mem-${BROWNFIELD_ID}.json`. Graceful degradation on failure.
 
 ## Cleanup
 
@@ -2445,8 +2425,8 @@ Present after memory flush. Read deliverables before cleanup.
 
 ## Security & Privacy
 
-- `umask 077` before writes; `chmod 600` on all artifacts and `state_file`
-- Memory file `0o600` via `memory.py`
+- Redact secrets as `[REDACTED]` in all `/tmp` artifacts; cite `file:line` only in user messages
+- **Path allowlist:** persisted paths must match `/tmp/grok-brownfield-*` (delegated exec summaries may use `/tmp/grok-exec-summary-*`); reject invalid paths before read/merge
+- Memory file `0o600` via `memory.py` (bundled dependency)
 - Remap security-auditor native severities (critical/high/medium/low) → workflow severities (bug/suggestion/nit) in analysis artifacts
 - `/tmp` deliverables have no TTL — default keep deliverables; optional `--cleanup-deliverables` and manual scrub documented in Final Report
-- Delegated execute-plan artifacts: brownfield chmod-fixes post-hoc; warn when any remain world-readable
