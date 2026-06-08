@@ -51,7 +51,7 @@ You are a **coordinator, not an implementer**. Your job matches `/design`, `/imp
 - Skip tool calls while narrating subagent launches
 - Treat workflow steps as optional guidance — phases, gates, reviewers, and validation requirements are **normative**
 
-**Orchestrator-only writes** (allowed): `intent_brief_file`, `orchestration_plan_file`, merged `assumptions_file` / `analysis_merged_file`, `state_file`, `instructions_file`, execute-review merges, credential scrubbing, and chmod on orchestrator-owned artifacts.
+**Orchestrator-only writes** (allowed): `intent_brief_file`, `orchestration_plan_file`, `spawn_log_file`, merged `assumptions_file` / `analysis_merged_file` / `source_merged_file` (when Phase 0b runs), `state_file`, `instructions_file`, execute-review merges, credential scrubbing, and chmod on orchestrator-owned artifacts.
 
 All substantive investigation and authoring is delegated to subagents with persona injection or prompt-only specialist templates.
 
@@ -119,7 +119,7 @@ Normative advancement — mirror `/design`, `/implement`, and `/execute-plan`. *
 | 0 Setup | `BROWNFIELD_ID` valid; personas loaded fail-fast; `analysis_dir` created; memory snapshot attempted |
 | 1 Intent | `intent_brief_file` written; success criteria + scope actionable; open questions escalated or recorded |
 | 0b Source (optional) | When triggered: `source_merged_file` exists with full schema; Pass 0 spawns logged in `spawn_log_file` |
-| 1b Orchestration | `orchestration_plan_file` written per effort rules; every subtask row has `Est. input chars`, `Budget status`, `Transport mode`; `specialist_configs` built and announced; `spawn_log_file` initialized |
+| 1b Orchestration | `orchestration_plan_file` written per effort rules; subtask table includes `Est. input chars`, `Budget status`, `Transport mode` columns (effort ≥5: every row populated; effort <5: columns present, estimates recorded at spawn per pre-spawn gate); `specialist_configs` built and announced; `spawn_log_file` initialized |
 | 2 Pass 1 | Pre-spawn budget gate passed for every spawn; all pass-1 specialists completed or required failures handled; checkpoint artifacts written |
 | 2 Pass 2 | All pass-2 specialists waited-on; merge complete; blocking assumptions evaluated |
 | 2a Escalation | No blocking assumptions remain (or scope narrowed per cap) |
@@ -176,7 +176,7 @@ Record estimate in Phase 1b subtask row `Est. input chars` and in spawn log befo
 4. If estimate > 400,000 with documented chunk plan → `Budget status = CHUNK`; spawn chunk worker first
 5. If subtask must split across multiple specialists → `Budget status = SPLIT`; decompose in orchestration plan before spawn
 
-**Phase 1b exit gate:** Every subtask row must have `Est. input chars`, `Budget status`, and `Transport mode` populated. No row may advance to Phase 2 with `Est. input chars` > 400,000 unless `Budget status = CHUNK` with documented chunk plan in the orchestration plan.
+**Phase 1b exit gate:** Subtask table must include `Est. input chars`, `Budget status`, and `Transport mode` columns. At effort ≥5, every row must have all three populated. At effort <5, columns must be present; per-row estimates are recorded at spawn per pre-spawn gate. No row may advance to Phase 2 with `Est. input chars` > 400,000 unless `Budget status = CHUNK` with documented chunk plan in the orchestration plan.
 
 **Phase 2 entry gate:** All planned Phase 2 spawns must pass pre-spawn gate; spawn log must record gate outcomes before first analysis specialist launches.
 
@@ -322,7 +322,7 @@ Flags may appear anywhere in the argument string (not only prefix). Scan the ful
    - If `state_file` missing or corrupt JSON → reject: `"Cannot resume: state file not found or invalid"`
    - **Cross-check:** require `state.brownfield_id == BROWNFIELD_ID`; reject on mismatch: `"Cannot resume: state file brownfield_id mismatch"`
    - **Workspace validation:** verify `state.workspace_root` exists and `git -C "<workspace_root>" rev-parse --show-toplevel` matches stored value (or `pwd` for non-git); reject on mismatch: `"Cannot resume: workspace_root invalid or changed"`
-   - **Path allowlist validation** — before `read_file`, merge, or `chmod`, validate every persisted path field (`intent_brief_file`, `orchestration_plan_file`, `assumptions_file`, `design_doc_file`, `analysis_merged_file`, `instructions_file`, `exec_summary_glob` if set): must be absolute, contain no `..`, and match `/tmp/grok-brownfield-*` prefix (delegated `exec_summary_glob` may use `/tmp/grok-exec-summary-*`). Reject on failure: `"Cannot resume: invalid artifact path in state file"`
+   - **Path allowlist validation** — before `read_file`, merge, or `chmod`, validate every persisted path field (`intent_brief_file`, `orchestration_plan_file`, `spawn_log_file`, `source_merged_file`, `assumptions_file`, `design_doc_file`, `analysis_merged_file`, `instructions_file`, `exec_summary_glob` if set): must be absolute, contain no `..`, and match `/tmp/grok-brownfield-*` prefix (delegated `exec_summary_glob` may use `/tmp/grok-exec-summary-*`). Reject on failure: `"Cannot resume: invalid artifact path in state file"`
    - Validate `execute_plan_id` (if present) matches `^[0-9a-f]{8}$`; reject invalid IDs before any path interpolation
    - **chmod 600** all validated artifact paths listed in `state_file` plus `state_file` itself (legacy runs may predate chmod)
    - **Re-validate `dag` nodes on resume:** each `pr.id` must match `^[a-z0-9-]+$`; each `pr.branch` must match `^brownfield/<BROWNFIELD_ID>-[0-9]+-[a-z0-9-]+$`; reject on failure
@@ -750,7 +750,7 @@ When spawning any specialist in Phase 2+, include in every prompt:
 ### Exit
 
 - `orchestration_plan_file` exists and meets effort depth table
-- Every subtask row has `Est. input chars`, `Budget status`, `Transport mode` populated (required at effort 5 for **every** row)
+- Subtask table includes `Est. input chars`, `Budget status`, `Transport mode` columns; at effort ≥5 every row populated; effort <5 columns present (estimates recorded at spawn per pre-spawn gate)
 - No row with `Est. input chars` > 400,000 unless `Budget status = CHUNK` with documented chunk plan
 - `spawn_log_file` initialized at `/tmp/grok-brownfield-spawn-log-${BROWNFIELD_ID}.md`
 - Over-budget rows without CHUNK plan block Phase 2 advance
@@ -2263,7 +2263,7 @@ When `delegate_execute_flag` is true:
 
 1. Read bundled `execute_plan_skill_path` via `read_file`
 2. Read `instructions_file`; store as `user_instructions`
-3. **Context-budget check:** Before nested `/execute-plan`, estimate total handoff payload (`instructions_file` excerpts + `design_doc_file` excerpts + persona). If > 400,000 chars, chunk into excerpt artifacts — **excerpt-only handoff** to nested orchestrator; never pass full design doc or instructions inline if over cap. Record in `spawn_log_file` (spawn-log continuity with prior phases).
+3. **Context-budget check:** Before nested `/execute-plan`, estimate total handoff payload (`instructions_file` excerpts + `design_doc_file` excerpts + persona). If > 400,000 chars, chunk into excerpt artifacts — **excerpt-only handoff** to nested orchestrator; never pass full design doc or instructions inline if over cap. Apply KD-013 — no full `SKILL.md` in nested handoff. Record in `spawn_log_file` (spawn-log continuity with prior phases).
 4. Follow execute-plan as nested orchestrator — do **not** merely echo a slash command
 5. Invoke with **file-only instructions** (no secrets in argv):
    ```
@@ -2426,7 +2426,7 @@ Present after memory flush. Read deliverables before cleanup.
 - **Orchestrator identity** — coordinate only; specialists investigate and author; orchestrator plans, delegates, merges, enforces gates
 - **Context budget protocol** — 400,000-char cap; pre-spawn gate; excerpt-only downstream; never inject full SKILL.md; spawn log at `spawn_log_file`
 - **Protocol enforcement** — phase gates are normative; violation → rewind and run skipped phase
-- **Orchestration decomposition** — Phase 1b required before analysis; effort scales plan depth; budget columns on every subtask row
+- **Orchestration decomposition** — Phase 1b required before analysis; effort scales plan depth; budget columns always on subtask table (populated at effort ≥5)
 - **Effort model** — visible delta 1→5 in plan depth, specialist roster, reviewer slots
 - **Excellence Doctrine** — first-principles decomposition, limits thinking, 0 open issues, bottleneck-first PR plans
 - **Tool-call discipline** — paired `spawn_subagent` for every launch claim
