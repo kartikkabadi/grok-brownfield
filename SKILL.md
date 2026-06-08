@@ -1,19 +1,20 @@
 ---
 name: brownfield
 description: >-
-  Discover intent and validate an existing (brownfield) project end-to-end:
+  First-principles audit and improvement for existing (brownfield) projects:
   assumption-aware parallel analysis (architecture, code, tests, product-intent,
-  docs, security), consolidated improvement design doc, design review loop
-  until 0 open issues, and optional --execute via inline worktree-isolated PR
-  plan execution with effort-scaled per-PR reviewers (or --delegate-execute
-  fallback). Treats existing code as evidence—not ground truth—and escalates
-  low-confidence assumptions for user confirmation.
+  docs, security), limits/performance thinking, consolidated improvement design
+  doc, design review loop until 0 open issues, and optional --execute via inline
+  worktree-isolated PR plan execution with effort-scaled per-PR reviewers (or
+  --delegate-execute fallback). Treats existing code as evidence—not ground truth.
 when-to-use: >-
   Use when asked to "brownfield", "audit existing project", "validate architecture",
   "review existing codebase", "improve legacy project", "is this built correctly",
   or "/brownfield". Especially when the user can use the app but cannot inspect
   the codebase for deeper issues.
-argument-hint: "[--effort N] [--execute] [--delegate-execute] [--no-graphite] [--auto-pr] [--resume ID] [--concurrency N] [--cleanup-deliverables] <project path or description>"
+argument-hint: "<project path or description> [--effort N] [--execute] [--delegate-execute] [--concurrency N] [--no-graphite] [--auto-pr] [--resume <BROWNFIELD_ID>] [--cleanup-deliverables]"
+metadata:
+  short-description: "First-principles audit & improvement for existing codebases"
 compatibility: Requires git workspace, spawn_subagent, AskQuestion or equivalent user-input tool. Optional: gt (Graphite), gh (GitHub CLI). Shell/read tools equivalent to `run_terminal_cmd` / `read_file` are acceptable.
 ---
 
@@ -24,6 +25,8 @@ compatibility: Requires git workspace, spawn_subagent, AskQuestion or equivalent
 You are an orchestrator for **existing (brownfield) projects** where the user can operate the application but cannot reliably validate whether architecture, design, implementation, testing, or execution is correct. You run a **discovery → assumption-aware validation → consolidated improvement plan → optional execution** workflow.
 
 **Core principle:** Existing code is **evidence, not ground truth**. Specialists must question whether behavior, architecture, and constraints are intentional, flag low-confidence areas, and escalate assumptions needing user confirmation via `needs-user-input`.
+
+**Excellence bar:** Brownfield is not a checklist audit. Every phase applies **first-principles thinking** — decompose to constraints, question inherited assumptions, think in limits, and pursue the platonic ideal before accepting "how it is." Design review and execute review both exit at **0 open issues**. Partial quality is failure.
 
 You coordinate only. You **must not**:
 - Write source code (except git conflict resolution during inline execute Phase 5, mirroring execute-plan)
@@ -75,16 +78,69 @@ Open the run with a `todo_write` (`merge: false`) listing the canonical phases:
 
 Never end a turn with `in_progress` set to a phase whose subagent has not been spawned yet. Spawn first; then mark phases complete/in_progress in the next turn.
 
+## Excellence Doctrine (First Principles)
+
+Normative quality bar for every specialist, writer, reviewer, and orchestrator merge. Inject the relevant bullets into specialist prompts when `effort >= 3`; at `effort == 5`, apply **all** bullets.
+
+### 1. First principles decomposition
+
+Before accepting observed behavior or architecture:
+
+1. **Axioms** — What must be true (physics, security, business, UX)? List as testable statements.
+2. **Decompose** — Break systems to fundamental parts (data, trust boundaries, latency path, cost drivers).
+3. **Reason up** — Reconstruct what the design *should* be from axioms; compare to what exists.
+4. **Experiment** — Prefer evidence over narrative: run tests, read hot paths, measure if safe.
+
+Existing implementation is a hypothesis until validated.
+
+### 2. Thinking in limits
+
+Stress-test at scale before blaming "it's fine for now":
+
+- **Volume:** If traffic/users/data were 10× or 100×, what breaks first?
+- **Latency:** Critical path at p50/p99 — where are serial bottlenecks, N+1 queries, blocking I/O?
+- **Cost:** Idiot index — ratio of raw resource cost (compute, storage, API calls) to delivered value. High ratio → structural waste, not tuning.
+- **Ideal:** Describe the platonic ideal (zero-flaw arrangement); gap to current state = improvement backlog priority.
+
+### 3. Semantic knowledge tree
+
+Master fundamentals before leaf fixes:
+
+- Trunk: intent, trust boundaries, data model invariants
+- Branches: module boundaries, API contracts, test strategy
+- Leaves: naming, style, minor refactors
+
+Do not optimize leaves while trunk assumptions are wrong.
+
+### 4. Maniacal execution standards
+
+- **Bottleneck focus** — Identify the constraint; all PRs should relieve it or enable parallel work toward it.
+- **No "can't" without plan** — Every blocker needs: what was tried, what's needed, ETA or escalation.
+- **0 open issues** — Design review and per-PR execute review exit only at zero open issues (any severity).
+- **Usefulness** — Prefer changes with highest `(people affected × utility gain)` per unit risk.
+
+### 5. Specialist excellence mandates (by domain)
+
+| Domain | First-principles questions |
+|--------|---------------------------|
+| Architecture | Is this layering intentional or accident? SPOFs? Wrong abstraction level? |
+| Code | Does hot path match intent? Unnecessary indirection? Error paths tested? |
+| Tests | Do tests prove intent or merely existence? Missing failure/limit cases? |
+| Security | What's the trust boundary? What happens if every input is malicious? |
+| Performance | p99 budget per user journey? Caching, batching, async opportunities? |
+| Product-Intent | Does user-visible behavior match success criteria or rationalized drift? |
+| Documentation | Would a new engineer rebuild the *right* system from docs alone? |
+
 ## Invocation
 
 The user runs:
 ```
-/brownfield [--effort N] [--execute] [--delegate-execute] [--no-graphite] [--auto-pr] [--resume <BROWNFIELD_ID>] [--concurrency N] [--cleanup-deliverables] <project path or description>
+/brownfield <project path or description> [--effort N] [--execute] [--delegate-execute] [--concurrency N] [--no-graphite] [--auto-pr] [--resume <BROWNFIELD_ID>] [--cleanup-deliverables]
 ```
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `--effort` | Integer 1–5 | 1 | Scales **both** analysis specialists **and** per-PR implementation reviewers (inline path) |
+| `--effort` | Integer 1–5 | 1 | Scales **both** analysis specialists **and** per-PR implementation reviewers (inline path). At 3+, Excellence Doctrine mandates apply; at 5, dual code review + max execute reviewers |
 | `--execute` | Flag | false | After Phase 4b, run Phase 5–6 (default: inline execute with effort-scaled reviewers) |
 | `--delegate-execute` | Flag | false | Force delegation to `/execute-plan` instead of inline execute (effort capped at 1 per PR). Requires `--execute`; rejected without it. |
 | `--no-graphite` | Flag | false | Force plain-git stack assembly even when `gt` is installed (inline path) |
@@ -356,6 +412,14 @@ Scrub user-provided text for credential patterns before writing. Write to `inten
 ## User Goal
 ...
 
+## First Principles Decomposition
+| Axiom ID | Statement (must be true) | Evidence or test |
+|----------|--------------------------|------------------|
+| FP-1 | ... | ... |
+
+## Platonic Ideal (one paragraph)
+What would this system look like if built correctly from axioms, ignoring sunk cost?
+
 ## Success Criteria
 - [ ] <measurable outcome>
 
@@ -626,15 +690,19 @@ You are a senior systems architect performing brownfield architecture analysis.
 
 CRITICAL: Existing code is EVIDENCE, not ground truth.
 
+Apply **Excellence Doctrine (First Principles)** from the brownfield skill: decompose to axioms, reason up to ideal architecture, think in limits (10×/100× scale, p99 latency, idiot index on cost).
+
 ## Intent Brief
 Read: <intent_brief_file>
 
 ## Your Task
+- Reconstruct **intended** architecture from Intent Brief axioms and platonic ideal — then diff against observed code
 - Module boundaries, layering, circular dependencies
 - Data flow and trust boundaries
-- Scalability bottlenecks, SPOFs
-- Divergence from documented architecture
-- Legacy constraints validity
+- Scalability bottlenecks, SPOFs (think in limits: what breaks at 10× load?)
+- Performance: critical user journeys, serial bottlenecks, caching/async opportunities (cite hot paths)
+- Divergence from documented architecture and from platonic ideal
+- Legacy constraints validity — which are physics vs accident?
 
 ## Assumption discipline
 For each claim: Statement, Evidence (file:line), Confidence, Impact if wrong
@@ -647,7 +715,9 @@ Write to: <analysis_dir>/architecture.md
 
 ## Executive Summary
 ## Current Architecture (as observed)
+## First-Principles Ideal (reconstructed)
 ## Intent Alignment
+## Limits Analysis (scale, latency, cost)
 ## Issues (severity: bug|suggestion|nit)
 ### Issue N [Architecture] — Severity: ...
 - **File**: path:line
@@ -720,6 +790,8 @@ Inject `reviewer_persona_instructions`. Include `## Past Issue Patterns` block o
 
 Brownfield CODE analysis — existing codebase (not a diff). Pass 2.
 
+Apply Excellence Doctrine: question whether code matches axioms/platonic ideal, not just style. Flag hot-path latency issues and structural waste (high idiot index).
+
 ## Intent Brief: <intent_brief_file>
 ## Pass-1 Context
 Read: <analysis_dir>/architecture.md
@@ -727,7 +799,7 @@ Read if present: <analysis_dir>/product-intent.md
 Read: <assumptions_file>
 
 ## Scope
-Prioritize Intent Brief + Architecture findings.
+Prioritize Intent Brief + Architecture findings + Limits Analysis.
 
 ## Assumption discipline
 Record inferences with confidence; challenge pass-1 assumptions if code contradicts.
@@ -855,14 +927,20 @@ You are validating brownfield improvements met original intent.
 ## Task
 1. Run documented test command from execute summaries if safe; cite exit codes
 2. Map each Success Criterion → met | partially met | not met | not verified
-3. Diff open [Tests] issues from tests.md against post-execute evidence
-4. Flag regressions and unresolved assumptions
-5. Note PRs not verified due to failed/skipped status
-6. Classify blockers as bug/suggestion; recommend /implement for scoped fixes or new /brownfield for broad re-audit
-7. v1: no verify review loop — informational only
+3. Build **Intent Traceability Matrix**: each Success Criterion → design Key Decision → PR(s) → test/runtime evidence
+4. Diff open [Tests] issues from tests.md against post-execute evidence
+5. Flag regressions and unresolved assumptions
+6. Note PRs not verified due to failed/skipped status
+7. Assess first-principles gaps remaining (platonic ideal vs shipped state)
+8. Classify blockers as bug/suggestion; recommend /implement for scoped fixes or new /brownfield for broad re-audit
+9. v1: no verify review loop — informational only
 
 ## Output
 Write to: /tmp/grok-brownfield-verify-${BROWNFIELD_ID}.md
+
+## Intent Traceability Matrix
+| Success Criterion | Key Decision | PR(s) | Evidence | Status |
+|-------------------|--------------|-------|----------|--------|
 
 ## Success Criteria Verification
 | Criterion | Status | Evidence |
@@ -903,15 +981,17 @@ Write a BROWNFIELD improvement design document.
 
 ## Required sections
 - Current State Assessment
+- First-Principles Assessment (axioms, platonic ideal gap, limits at scale)
 - Validated Findings (grouped by severity)
 - Assumptions & Confidence (A-### table)
-- Gaps & Risks
-- Improvement Strategy
+- Gaps & Risks (prioritize by bottleneck / utility impact)
+- Improvement Strategy (bottleneck-first ordering)
 - Key Decisions (MANDATORY)
 - PR Plan (MANDATORY, ### PR N: headings)
 - Open Questions
 
 Include Mermaid diagrams for current vs. proposed architecture where helpful.
+Apply Excellence Doctrine: every PR should trace to an axiom or platonic-ideal gap, not cosmetic churn.
 The PR Plan must be realistic for /execute-plan parsing (### PR N: headings).
 
 Redact secrets in design doc. Write to: <design_doc_file> and <summary_file>
@@ -946,6 +1026,13 @@ Write review to: <design_review_file>
 Severity: critical|major|minor|nit. Every issue Status: open.
 
 Pay special attention to: assumptions escalation, evidence citations, PR Plan ordering, do-no-harm rollout, Key Decisions.
+
+**Excellence Doctrine review checklist** (flag open issues for any gap):
+- First-Principles Assessment present and grounded in Intent Brief FP-* axioms
+- Platonic ideal gap addressed — not just incremental patches on accidental design
+- Limits thinking: scale, latency, cost (idiot index) for critical paths
+- PR Plan is bottleneck-first; no drive-by refactors without utility justification
+- Every Key Decision cites evidence or explicit user-confirmed assumption
 
 ## Artifact security
 Redact secret values as [REDACTED] in review_file; cite file:line only. chmod 600 review_file after write.
@@ -1988,7 +2075,7 @@ Present after memory flush. Read deliverables before cleanup.
 8. **Open Questions** — resolved or none
 9. **PR Plan** — summary or path
 10. **Execution** — PRs completed/failed/skipped; `execute_plan_id` if delegated; resume command by `phase`
-11. **Verification** — verify file path; success criteria table (or "skipped — 0 PRs completed")
+11. **Verification** — verify file path; Intent Traceability Matrix + success criteria table (or "skipped — 0 PRs completed")
 12. **Memory update** — patterns; path; created vs updated
 13. **Cleanup** — removed vs retained; manual scrub command
 14. **Suggested follow-ups** — `/brownfield --execute --effort N`, `/brownfield --resume <BROWNFIELD_ID>` (inline), `/execute-plan --resume <id>` (delegated), `/implement`
@@ -2016,6 +2103,7 @@ Present after memory flush. Read deliverables before cleanup.
 
 ## Rules
 
+- **Excellence Doctrine** — first-principles decomposition, limits thinking, 0 open issues, bottleneck-first PR plans
 - **Tool-call discipline** — paired `spawn_subagent` for every launch claim
 - **Bundled path resolution** — `bundled_skills_root` algorithm; never `../shared/personas` from user scope
 - **Memory via implement helper** — single `update` per run

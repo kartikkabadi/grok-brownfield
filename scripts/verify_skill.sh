@@ -79,6 +79,7 @@ pass "frontmatter fields and flags present"
 # --- Required phase / section headings (STRUCTURAL_GUARDS — anchored) ---
 REQUIRED_HEADING_PATTERNS=(
   '^## Tool-Call Discipline'
+  '^## Excellence Doctrine'
   '^## Todo Scaffold'
   '^## Invocation'
   '^## Phase 0: Setup'
@@ -217,6 +218,14 @@ grep_skill '--effort.*Scales \*\*both\*\* analysis'
 grep_skill 'PRIMARY'
 grep_skill 'FALLBACK'
 grep_skill 'Phase 5 Step 7'
+grep_skill '## Excellence Doctrine'
+grep_skill 'First Principles Decomposition'
+grep_skill 'Intent Traceability Matrix'
+grep_skill 'Thinking in limits'
+grep_skill 'idiot index'
+grep_skill 'Platonic Ideal'
+grep_skill 'short-description'
+grep_skill '<project path or description>'
 pass "design-mandated content patterns present"
 
 # Implementer must be fail-fast (scoped to Persona Resolution — not whole SKILL.md)

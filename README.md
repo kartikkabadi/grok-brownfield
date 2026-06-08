@@ -90,12 +90,20 @@ If the skill does not appear, verify `~/.grok/skills/brownfield/SKILL.md` exists
 
 **Where to type this:** In the **Grok Build agent chat input** (the main prompt where you instruct the coding agent) — not your system shell, unless your Grok setup documents a CLI entry point.
 
-Point `project path` at the root of the Git repo you want audited (the folder that contains `.git`):
+Point `project path` at the root of the Git repo you want audited (the folder that contains `.git`).
+
+In the Grok CLI/TUI, selecting `/brownfield` shows a **prefilled usage preview** (same pattern as `/execute-plan`):
+
+```
+/brownfield <project path or description> [--effort N] [--execute] [--delegate-execute] [--concurrency N] [--no-graphite] [--auto-pr] [--resume <BROWNFIELD_ID>] [--cleanup-deliverables]
+```
+
+Examples:
 
 ```
 /brownfield ./my-repo
-/brownfield --effort 3 ./my-repo "focus on checkout flow"
-/brownfield --execute --effort 4 ./my-repo
+/brownfield ./my-repo --effort 3 "focus on checkout flow"
+/brownfield ./my-repo --execute --effort 4
 ```
 
 ---
@@ -156,6 +164,17 @@ Brownfield often **feeds** implement: Phase 5 inline execute uses worktree-isola
 
 ---
 
+## Choosing effort (decision tree)
+
+```
+Need a quick sanity check?          → effort 1 (architecture + code)
+Shipping soon / auth or payments?   → effort 4 (+ security specialist)
+Want best quality end-to-end?       → effort 5 (+ dual code review, 6 execute reviewers)
+Also want PRs implemented?          → add --execute
+```
+
+Brownfield applies **first-principles thinking** at effort ≥ 3: decompose to axioms, think in limits (scale/latency/cost), design toward the platonic ideal, and exit review loops only at **0 open issues**.
+
 ## Effort vs `--execute`
 
 Two independent knobs:
@@ -187,16 +206,16 @@ Two independent knobs:
 /brownfield ./my-saas-app
 
 # Deeper audit with security and docs specialists
-/brownfield --effort 4 ./my-saas-app "review payment and auth flows"
+/brownfield ./my-saas-app --effort 4 "review payment and auth flows"
 
-# Full pipeline: audit → design → implement → verify
-/brownfield --execute --effort 4 ./my-saas-app
+# Full pipeline: audit → design → implement → verify (max rigor)
+/brownfield ./my-saas-app --execute --effort 5
 
 # Resume a crashed execute run (ID from state file)
 /brownfield --resume a1b2c3d4
 
 # Force plain git + auto draft PRs (no Graphite)
-/brownfield --execute --no-graphite --auto-pr ./my-repo
+/brownfield ./my-repo --execute --no-graphite --auto-pr
 ```
 
 ---
