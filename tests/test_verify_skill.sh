@@ -100,6 +100,51 @@ sed -i '' '/^## Context Budget Protocol$/,/^## Excellence Doctrine$/{
     /^## Excellence Doctrine$/!d
   }' "${NO_CONTEXT_BUDGET_DIR}/SKILL.md"
 expect_fail "NO_CONTEXT_BUDGET" "Context Budget Protocol" bash "${NO_CONTEXT_BUDGET_DIR}/scripts/verify_skill.sh"
+# Context-budget regression: covered by NO_CONTEXT_BUDGET above (PR 1) — do not duplicate strip fixture.
+
+# --- Stripped effort-5 reviewer roster algorithm (total_slots = 6 block) ---
+NO_EFFORT5_ROSTER_DIR="${TMPROOT}/no-effort5-roster"
+mkdir -p "${NO_EFFORT5_ROSTER_DIR}/scripts"
+cp "${VERIFY}" "${NO_EFFORT5_ROSTER_DIR}/scripts/verify_skill.sh"
+cp "${RESOLVE}" "${NO_EFFORT5_ROSTER_DIR}/scripts/resolve_bundled_root.sh"
+chmod +x "${NO_EFFORT5_ROSTER_DIR}/scripts/resolve_bundled_root.sh"
+cp -R "${SKILL_DIR}/fixtures" "${NO_EFFORT5_ROSTER_DIR}/fixtures"
+cp "${SOURCE_SKILL}" "${NO_EFFORT5_ROSTER_DIR}/SKILL.md"
+sed -i '' '/^\*\*Decision algorithm (per PR)\*\*/,/^\*\*Building reviewer_configs (per PR):\*\*/{
+  /^\*\*Building reviewer_configs (per PR):\*\*/!d
+}' "${NO_EFFORT5_ROSTER_DIR}/SKILL.md" 2>/dev/null \
+  || sed -i '/^\*\*Decision algorithm (per PR)\*\*/,/^\*\*Building reviewer_configs (per PR):\*\*/{
+    /^\*\*Building reviewer_configs (per PR):\*\*/!d
+  }' "${NO_EFFORT5_ROSTER_DIR}/SKILL.md"
+expect_fail "NO_EFFORT5_ROSTER_ALGORITHM" "total_slots = 6" bash "${NO_EFFORT5_ROSTER_DIR}/scripts/verify_skill.sh"
+
+# --- Replaced matched_specialists.append wiring ---
+NO_MATCHED_APPEND_DIR="${TMPROOT}/no-matched-append"
+mkdir -p "${NO_MATCHED_APPEND_DIR}/scripts"
+cp "${VERIFY}" "${NO_MATCHED_APPEND_DIR}/scripts/verify_skill.sh"
+cp "${RESOLVE}" "${NO_MATCHED_APPEND_DIR}/scripts/resolve_bundled_root.sh"
+chmod +x "${NO_MATCHED_APPEND_DIR}/scripts/resolve_bundled_root.sh"
+cp -R "${SKILL_DIR}/fixtures" "${NO_MATCHED_APPEND_DIR}/fixtures"
+cp "${SOURCE_SKILL}" "${NO_MATCHED_APPEND_DIR}/SKILL.md"
+sed -i '' 's/matched_specialists\.append/matched_specialists_broken/g' "${NO_MATCHED_APPEND_DIR}/SKILL.md" 2>/dev/null \
+  || sed -i 's/matched_specialists\.append/matched_specialists_broken/g' "${NO_MATCHED_APPEND_DIR}/SKILL.md"
+expect_fail "NO_MATCHED_SPECIALISTS_APPEND" "matched_specialists.append" bash "${NO_MATCHED_APPEND_DIR}/scripts/verify_skill.sh"
+
+# --- Stripped The Algorithm subsection (Excellence Doctrine) ---
+NO_ALGORITHM_DIR="${TMPROOT}/no-algorithm"
+mkdir -p "${NO_ALGORITHM_DIR}/scripts"
+cp "${VERIFY}" "${NO_ALGORITHM_DIR}/scripts/verify_skill.sh"
+cp "${RESOLVE}" "${NO_ALGORITHM_DIR}/scripts/resolve_bundled_root.sh"
+chmod +x "${NO_ALGORITHM_DIR}/scripts/resolve_bundled_root.sh"
+cp -R "${SKILL_DIR}/fixtures" "${NO_ALGORITHM_DIR}/fixtures"
+cp "${SOURCE_SKILL}" "${NO_ALGORITHM_DIR}/SKILL.md"
+sed -i '' '/^### 4\. The Algorithm/,/^### 5\. Utility gate/{
+  /^### 5\. Utility gate/!d
+}' "${NO_ALGORITHM_DIR}/SKILL.md" 2>/dev/null \
+  || sed -i '/^### 4\. The Algorithm/,/^### 5\. Utility gate/{
+    /^### 5\. Utility gate/!d
+  }' "${NO_ALGORITHM_DIR}/SKILL.md"
+expect_fail "NO_ALGORITHM_SUBSECTION" "The Algorithm" bash "${NO_ALGORITHM_DIR}/scripts/verify_skill.sh"
 
 # --- Dropped wait protocol ---
 NO_WAIT_DIR="${TMPROOT}/no-wait"

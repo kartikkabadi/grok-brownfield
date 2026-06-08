@@ -130,6 +130,57 @@ for pattern in "${REQUIRED_HEADING_PATTERNS[@]}"; do
 done
 pass "required phase headings present (anchored)"
 
+# --- Compound section anchors (A-010 — run before global greps for precise failures) ---
+DOCTRINE_SECTION="$(extract_section '^## Excellence Doctrine' '^## ')"
+[[ -n "${DOCTRINE_SECTION}" ]] || fail "Excellence Doctrine section missing"
+echo "${DOCTRINE_SECTION}" | grep -q 'people affected' \
+  || fail "Excellence Doctrine missing utility gate: people affected"
+echo "${DOCTRINE_SECTION}" | grep -q 'utility gain' \
+  || fail "Excellence Doctrine missing utility gate: utility gain"
+echo "${DOCTRINE_SECTION}" | grep -q 'cannot override' \
+  || fail "Excellence Doctrine missing 0-open-issues cannot-override cross-ref"
+echo "${DOCTRINE_SECTION}" | grep -q '### 4\. The Algorithm' \
+  || fail "Excellence Doctrine missing The Algorithm subsection"
+echo "${DOCTRINE_SECTION}" | grep -qE 'Question requirements|^\*\*Question' \
+  || fail "Excellence Doctrine missing Algorithm Question step"
+echo "${DOCTRINE_SECTION}" | grep -q 'Delete' \
+  || fail "Excellence Doctrine missing Algorithm Delete step"
+pass "Excellence Doctrine compound anchors present"
+
+CONTEXT_BUDGET_SECTION="$(extract_section '^## Context Budget Protocol' '^## ')"
+[[ -n "${CONTEXT_BUDGET_SECTION}" ]] || fail "Context Budget Protocol section missing"
+echo "${CONTEXT_BUDGET_SECTION}" | grep -qE 'CONTEXT_BUDGET_CAP_CHARS|400,?000|400000' \
+  || fail "Context Budget Protocol missing 400k cap constant"
+echo "${CONTEXT_BUDGET_SECTION}" | grep -q 'pre-spawn' \
+  || fail "Context Budget Protocol missing pre-spawn gate"
+echo "${CONTEXT_BUDGET_SECTION}" | grep -q 'grok-brownfield-spawn-log' \
+  || fail "Context Budget Protocol missing spawn log path"
+echo "${CONTEXT_BUDGET_SECTION}" | grep -q 'excerpt-only' \
+  || fail "Context Budget Protocol missing excerpt-only transport"
+echo "${CONTEXT_BUDGET_SECTION}" | grep -qE 'MUST NOT inject full.*SKILL|never.*full SKILL' \
+  || fail "Context Budget Protocol missing full-SKILL prohibition (KD-013)"
+pass "Context Budget Protocol compound anchors present"
+
+SLOT_ALGORITHM_SECTION="$(extract_section '^### Slot Algorithm' '^### ')"
+[[ -n "${SLOT_ALGORITHM_SECTION}" ]] || fail "Slot Algorithm (pass-2) subsection missing"
+echo "${SLOT_ALGORITHM_SECTION}" | grep -q 'sort selected_optional by PRIORITY' \
+  || fail "Slot Algorithm missing sort selected_optional by PRIORITY"
+echo "${SLOT_ALGORITHM_SECTION}" | grep -q 'num_code = 2 if effort == 5 else 1' \
+  || fail "Slot Algorithm missing effort-5 dual code specialists"
+pass "effort-5 pass-2 slot algorithm present"
+
+STEP5_SECTION="$(extract_section '^#### Step 5: Per-PR Review' '^#### Step 6')"
+[[ -n "${STEP5_SECTION}" ]] || fail "Step 5 Per-PR Review section missing"
+echo "${STEP5_SECTION}" | grep -q 'total_slots = 6' \
+  || fail "Step 5 missing effort-5 total_slots = 6"
+echo "${STEP5_SECTION}" | grep -q 'matched_specialists' \
+  || fail "Step 5 missing matched_specialists roster algorithm"
+echo "${STEP5_SECTION}" | grep -q 'matched_specialists.append' \
+  || fail "Step 5 missing matched_specialists.append wiring"
+echo "${STEP5_SECTION}" | grep -q 'specialists = matched_specialists\[:total_slots - 1\]' \
+  || fail "Step 5 missing specialist slot assignment from matched_specialists"
+pass "effort-5 execute reviewer roster algorithm present"
+
 # --- NORMATIVE_WIRING content checks (structural tokens preferred) ---
 grep_skill '/bundled/skills/'
 grep_skill '\$HOME/\.grok/bundled/skills'
@@ -262,17 +313,6 @@ grep_skill 'Platonic Ideal'
 grep_skill 'short-description'
 grep_skill '<project path or description>'
 pass "design-mandated content patterns present"
-
-# Excellence Doctrine: canonical utility formula (compound — people affected + utility gain)
-DOCTRINE_SECTION="$(extract_section '^## Excellence Doctrine' '^## ')"
-[[ -n "${DOCTRINE_SECTION}" ]] || fail "Excellence Doctrine section missing"
-echo "${DOCTRINE_SECTION}" | grep -q 'people affected' \
-  || fail "Excellence Doctrine missing utility gate: people affected"
-echo "${DOCTRINE_SECTION}" | grep -q 'utility gain' \
-  || fail "Excellence Doctrine missing utility gate: utility gain"
-echo "${DOCTRINE_SECTION}" | grep -q 'cannot override' \
-  || fail "Excellence Doctrine missing 0-open-issues cannot-override cross-ref"
-pass "Excellence Doctrine utility gate and exit-bar cross-ref present"
 
 # Delegated Execution Path must mandate context-budget check + excerpt-only handoff
 DELEGATED_SECTION="$(extract_section '^### Delegated Execution Path' '^### ')"
