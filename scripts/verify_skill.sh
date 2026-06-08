@@ -249,6 +249,12 @@ grep_skill 'FALLBACK'
 grep_skill 'Phase 5 Step 7'
 grep_skill '## Excellence Doctrine'
 grep_skill 'First Principles Decomposition'
+grep_skill 'The Algorithm'
+grep_skill 'Delete'
+grep_skill 'Corps delegation|wedge'
+grep_skill '0 open issues'
+grep_skill 'bottleneck'
+grep_skill 'Utility score'
 grep_skill 'Intent Traceability Matrix'
 grep_skill 'Thinking in limits'
 grep_skill 'idiot index'
@@ -256,6 +262,17 @@ grep_skill 'Platonic Ideal'
 grep_skill 'short-description'
 grep_skill '<project path or description>'
 pass "design-mandated content patterns present"
+
+# Excellence Doctrine: canonical utility formula (compound — people affected + utility gain)
+DOCTRINE_SECTION="$(extract_section '^## Excellence Doctrine' '^## ')"
+[[ -n "${DOCTRINE_SECTION}" ]] || fail "Excellence Doctrine section missing"
+echo "${DOCTRINE_SECTION}" | grep -q 'people affected' \
+  || fail "Excellence Doctrine missing utility gate: people affected"
+echo "${DOCTRINE_SECTION}" | grep -q 'utility gain' \
+  || fail "Excellence Doctrine missing utility gate: utility gain"
+echo "${DOCTRINE_SECTION}" | grep -q 'cannot override' \
+  || fail "Excellence Doctrine missing 0-open-issues cannot-override cross-ref"
+pass "Excellence Doctrine utility gate and exit-bar cross-ref present"
 
 # Delegated Execution Path must mandate context-budget check + excerpt-only handoff
 DELEGATED_SECTION="$(extract_section '^### Delegated Execution Path' '^### ')"

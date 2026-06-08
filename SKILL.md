@@ -3,7 +3,8 @@ name: brownfield
 description: >-
   First-principles audit and improvement for existing (brownfield) projects:
   effort-scaled orchestration decomposition with 400k-char context budget
-  protocol (excerpt-only specialist handoff),
+  protocol (excerpt-only specialist handoff), The Algorithm and utility-gate
+  doctrine (people affected × utility gain per unit risk),
   assumption-aware parallel analysis (architecture, code, tests, product-intent,
   docs, security), protocol-gated phases, limits/performance thinking,
   consolidated improvement design doc, design review loop until 0 open issues,
@@ -272,14 +273,59 @@ Master fundamentals before leaf fixes:
 
 Do not optimize leaves while trunk assumptions are wrong.
 
-### 4. Maniacal execution standards
+### 4. The Algorithm (strict order)
+
+Apply in this **strict order** — never skip ahead:
+
+1. **Question requirements** — Does each requirement improve user outcomes? Challenge inherited ceremony and "always done this way" assumptions.
+2. **Delete** — Remove steps, files, and gates that fail the utility gate or add no measurable value (e.g., permission theater, redundant validation loops).
+3. **Simplify** — Reduce moving parts after deletion; one transport layer beats ad-hoc per-spawn improvisation.
+4. **Accelerate** — Shorten critical path once simplified (parallel groups, data-driven decomposition, bottleneck-first PR ordering).
+5. **Automate** — Encode invariants in verify greps, phase gates, and spawn logs — not human memory.
+6. **Reinstate ~10%** — Only restore deleted complexity when a measured failure proves it necessary; document evidence in Key Decisions.
+
+Cross-reference **idiot index** (§2): high ratio signals Delete candidates before Accelerate tuning.
+
+### 5. Utility gate
+
+Score every proposed change and PR **before** merge. **Canonical formula** (normative — no alternate terminology):
+
+`(people affected × utility gain) per unit risk`
+
+| Input | Meaning |
+|-------|---------|
+| people affected | Who benefits (users, contributors, all brownfield runs, CI) |
+| utility gain | Magnitude of outcome improvement (prevents rot, removes false signals, clarifies transport) |
+| unit risk | Regression surface, blast radius, rollback cost |
+
+**Reject rules:**
+- Ceremony PRs (chmod/umask mandates, grep theater, permission-fix loops) that add no user utility → **Delete** per Algorithm step 2
+- Drive-by refactors without utility justification or axiom traceability
+- PRs that relieve non-bottleneck constraints while the rate-limiter remains unaddressed
+
+**Cannot override 0-open-issues exit:** The Algorithm Delete step and utility gate rank *which* work to plan and ship — they **cannot override** the **0 open issues** exit bar. Design review (Phase 4) and per-PR execute review (Phase 5) still exit only at **0 open issues** (any severity). Utility scoring does not waive review gates or downgrade open issues.
+
+At effort ≥3, Phase 1b subtask rows must include a **Utility score** column using this formula (qualitative high/medium/low or numeric estimate with one-line rationale).
+
+### 6. Corps delegation
+
+Brownfield runs like a **corps**, not a monolith:
+
+| Role | Responsibility | Metric |
+|------|----------------|--------|
+| **Orchestrator (core transport)** | Context budgeting, spawn logs, phase gates, merge/dedupe, delegation prompts, stack coordination | Transport integrity — every spawn ≤400k chars, excerpt-only handoff |
+| **Specialist wedges** | One domain each: architecture, code, tests, security, docs, product-intent, verify | Wedge-specific excellence — SPOFs, hot paths, intent proof, trust boundaries |
+
+The orchestrator **builds transport**; wedges **execute within bounded payloads**. The orchestrator MUST NOT substitute for wedge findings (see Orchestrator Identity). Each wedge receives persona + registered excerpts — never unbounded trunk injection.
+
+### 7. Maniacal execution standards
 
 - **Bottleneck focus** — Identify the constraint; all PRs should relieve it or enable parallel work toward it.
 - **No "can't" without plan** — Every blocker needs: what was tried, what's needed, ETA or escalation.
 - **0 open issues** — Design review and per-PR execute review exit only at zero open issues (any severity).
-- **Usefulness** — Prefer changes with highest `(people affected × utility gain)` per unit risk.
+- **PR traceability** — Every PR in the design doc must trace to an FP-* axiom or platonic-ideal gap — not cosmetic churn.
 
-### 5. Specialist excellence mandates (by domain)
+### 8. Specialist excellence mandates (by domain)
 
 | Domain | First-principles questions |
 |--------|---------------------------|
@@ -686,10 +732,10 @@ Read `intent_brief_file`. Build `specialist_configs` using the Phase 2 slot algo
 ...
 
 ## Subtask Decomposition
-| ID | Subtask | Assigned agent | Depends on | Est. input chars | Budget status | Transport mode | Validation gate |
-|----|---------|----------------|------------|------------------|---------------|----------------|-----------------|
-| T-1 | ... | [architecture] | — | 85000 | OK | excerpt-only | architecture.md exists |
-| T-2 | ... | [code] | T-1 | 120000 | OK | excerpt-only | code.md exists |
+| ID | Subtask | Assigned agent | Depends on | Est. input chars | Budget status | Transport mode | Utility score | Validation gate |
+|----|---------|----------------|------------|------------------|---------------|----------------|---------------|-----------------|
+| T-1 | ... | [architecture] | — | 85000 | OK | excerpt-only | high — all runs, prevents rot | architecture.md exists |
+| T-2 | ... | [code] | T-1 | 120000 | OK | excerpt-only | medium — hot-path clarity | code.md exists |
 
 ## Specialist Roster (computed)
 ### Pass 1
@@ -722,8 +768,8 @@ Read `intent_brief_file`. Build `specialist_configs` using the Phase 2 slot algo
 |--------|----------------|
 | 1 | Objective, Subtask table (≥2 rows), Specialist Roster, Parallelization (1 line each) |
 | 2 | + Dependencies & Risks (≥2 rows), Validation Checklist |
-| 3 | + per-specialist focus bullets (2–3 each), Open Questions table |
-| 4 | + Risk register (≥4 rows), validation matrix mapping success criteria → specialists |
+| 3 | + per-specialist focus bullets (2–3 each), Open Questions table, **Utility score** on every subtask row (canonical formula) |
+| 4 | + Risk register (≥4 rows), validation matrix mapping success criteria → specialists; Utility score on every subtask row |
 | 5 | + bottleneck hypothesis, PR-risk preview if `--execute`, explicit parallel groups with rationale; **every** subtask row must have `Est. input chars`, `Budget status`, and `Transport mode` populated before Phase 2 |
 
 Set `orchestration_plan_written = true`.
@@ -734,14 +780,14 @@ When spawning any specialist in Phase 2+, include in every prompt:
 1. Paths: `intent_brief_file`, `orchestration_plan_file` (excerpt references — not full inline unless under budget)
 2. This subtask's row from **Subtask Decomposition** (ID, validation gate, `Est. input chars`, `Budget status`, `Transport mode`)
 3. Effort-scaled focus bullets from **Specialist Roster** (effort ≥ 3)
-4. Excellence Doctrine block when `effort >= 3`
+4. Excellence Doctrine block when `effort >= 3` (include The Algorithm, Utility gate formula, Corps delegation)
 5. **Pre-spawn budget check:** confirm composed prompt ≤ 400,000 chars; record estimate in `spawn_log_file` before spawn
 6. **Excerpt-only handoff:** persona + registered SKILL excerpts + task excerpts — orchestrator **MUST NOT inject full `SKILL.md`** into any specialist prompt (KD-013)
 
 ### Exit
 
 - `orchestration_plan_file` exists and meets effort depth table
-- Subtask table includes `Est. input chars`, `Budget status`, `Transport mode` columns; at effort ≥5 every row populated; effort <5 columns present (estimates recorded at spawn per pre-spawn gate)
+- Subtask table includes `Est. input chars`, `Budget status`, `Transport mode`, `Utility score` columns; at effort ≥5 every row populated; at effort ≥3 every row has Utility score; effort <5 budget columns present (estimates recorded at spawn per pre-spawn gate)
 - No row with `Est. input chars` > 400,000 unless `Budget status = CHUNK` with documented chunk plan
 - `spawn_log_file` initialized at `/tmp/grok-brownfield-spawn-log-${BROWNFIELD_ID}.md`
 - Over-budget rows without CHUNK plan block Phase 2 advance
