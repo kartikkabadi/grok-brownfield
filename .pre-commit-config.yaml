@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: MIT
+# Pre-commit hooks for grok-brownfield
+
+repos:
+  - repo: local
+    hooks:
+      - id: verify-skill
+        name: Verify skill structure
+        entry: bash scripts/verify_skill.sh
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: test-verify-skill
+        name: Test verify_skill.sh
+        entry: bash tests/test_verify_skill.sh
+        language: system
+        pass_filenames: false
+        always_run: true
