@@ -78,12 +78,18 @@ pass "frontmatter fields and flags present"
 
 # --- Required phase / section headings (STRUCTURAL_GUARDS — anchored) ---
 REQUIRED_HEADING_PATTERNS=(
+  '^## Orchestrator Identity'
   '^## Tool-Call Discipline'
+  '^## Protocol Enforcement & Phase Gates'
+  '^## Context Budget Protocol'
+  '^## Effort Model'
   '^## Excellence Doctrine'
   '^## Todo Scaffold'
   '^## Invocation'
   '^## Phase 0: Setup'
+  '^## Phase 0b: Source Principles Ingestion'
   '^## Phase 1: Intent Discovery'
+  '^## Phase 1b: Orchestration Decomposition'
   '^## Phase 2: Assumption-Aware Analysis'
   '^## Phase 2a: Assumption Escalation'
   '^## Phase 3: Consolidated Design Document'
@@ -138,6 +144,31 @@ grep_skill 'execute_pending'
 grep_skill 'exec_summary_glob'
 grep_skill 'execute_plan_id'
 grep_skill '# Intent Brief'
+grep_skill 'orchestration_plan_file'
+grep_skill 'orchestration_plan_written'
+grep_skill '# Orchestration Decomposition Plan'
+grep_skill 'Phase 1b'
+grep_skill 'orchestration-decomposition'
+grep_skill 'Protocol Enforcement'
+grep_skill 'Phase gate matrix'
+grep_skill 'Violation handling'
+grep_skill 'Effort announcement'
+grep_skill 'Do not launch Phase 2 until'
+grep_skill 'Delegation prompt rule'
+grep_skill 'coordinate only'
+grep_skill 'Context Budget Protocol'
+grep_skill '400,?000|400000'
+grep_skill 'pre-spawn'
+grep_skill 'spawn log'
+grep_skill 'spawn_log_file'
+grep_skill 'excerpt-only'
+grep_skill 'MUST NOT inject full.*SKILL|never.*full SKILL'
+grep_skill 'Phase 0b|Source Principles Ingestion'
+grep_skill 'grok-brownfield-source-merged'
+grep_skill 'grok-brownfield-spawn-log'
+grep_skill 'Est\. input chars'
+grep_skill 'Budget status'
+grep_skill 'Transport mode'
 grep_skill '# Assumptions Register'
 grep_skill 'get_command_or_subagent_output'
 grep_skill '\[verify\]'
@@ -228,6 +259,17 @@ grep_skill 'short-description'
 grep_skill '<project path or description>'
 pass "design-mandated content patterns present"
 
+# Delegated Execution Path must mandate context-budget check + excerpt-only handoff
+DELEGATED_SECTION="$(extract_section '^### Delegated Execution Path' '^### ')"
+[[ -n "${DELEGATED_SECTION}" ]] || fail "Delegated Execution Path section missing"
+echo "${DELEGATED_SECTION}" | grep -qE 'context.budget|Context.budget|context budget' \
+  || fail "Delegated Execution Path missing context-budget check"
+echo "${DELEGATED_SECTION}" | grep -q 'excerpt-only' \
+  || fail "Delegated Execution Path missing excerpt-only handoff"
+echo "${DELEGATED_SECTION}" | grep -q 'instructions_file' \
+  || fail "Delegated Execution Path missing instructions_file reference"
+pass "Delegated Execution Path context-budget wiring present"
+
 # Implementer must be fail-fast (scoped to Persona Resolution — not whole SKILL.md)
 PERSONA_SECTION="$(extract_section '^### Persona Resolution' '^### ')"
 [[ -n "${PERSONA_SECTION}" ]] || fail "Persona Resolution section missing"
@@ -254,7 +296,7 @@ pass "memory timing consistent (single flush)"
 
 # Final Report bullets
 FINAL_BULLETS=$(awk '/^## Final Report/,/^## In-Progress Reporting/' "${SKILL_MD}" | grep -cE '^[0-9]+\. \*\*' || true)
-[[ "${FINAL_BULLETS}" -ge 14 ]] || fail "Final Report needs >= 14 bullets (found ${FINAL_BULLETS})"
+[[ "${FINAL_BULLETS}" -ge 15 ]] || fail "Final Report needs >= 15 bullets (found ${FINAL_BULLETS})"
 pass "Final Report has ${FINAL_BULLETS} bullets"
 
 # --- Bundled skills root (fallback path only; override resolution not tested) ---

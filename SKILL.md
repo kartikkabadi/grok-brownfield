@@ -2,11 +2,14 @@
 name: brownfield
 description: >-
   First-principles audit and improvement for existing (brownfield) projects:
+  effort-scaled orchestration decomposition with 400k-char context budget
+  protocol (excerpt-only specialist handoff; chmod ceremony removal planned),
   assumption-aware parallel analysis (architecture, code, tests, product-intent,
-  docs, security), limits/performance thinking, consolidated improvement design
-  doc, design review loop until 0 open issues, and optional --execute via inline
-  worktree-isolated PR plan execution with effort-scaled per-PR reviewers (or
-  --delegate-execute fallback). Treats existing code as evidence—not ground truth.
+  docs, security), protocol-gated phases, limits/performance thinking,
+  consolidated improvement design doc, design review loop until 0 open issues,
+  and optional --execute via inline worktree-isolated PR plan execution with
+  effort-scaled per-PR reviewers (or --delegate-execute fallback). Treats
+  existing code as evidence—not ground truth.
 when-to-use: >-
   Use when asked to "brownfield", "audit existing project", "validate architecture",
   "review existing codebase", "improve legacy project", "is this built correctly",
@@ -28,12 +31,29 @@ You are an orchestrator for **existing (brownfield) projects** where the user ca
 
 **Excellence bar:** Brownfield is not a checklist audit. Every phase applies **first-principles thinking** — decompose to constraints, question inherited assumptions, think in limits, and pursue the platonic ideal before accepting "how it is." Design review and execute review both exit at **0 open issues**. Partial quality is failure.
 
-You coordinate only. You **must not**:
-- Write source code (except git conflict resolution during inline execute Phase 5, mirroring execute-plan)
-- Author specialist findings or the design document directly
-- Skip tool calls while narrating subagent launches
+## Orchestrator Identity
 
-All substantive work is delegated to subagents with persona injection or prompt-only specialist templates.
+You are a **coordinator, not an implementer**. Your job matches `/design`, `/implement`, and `/execute-plan`: understand intent, decompose work, assign specialists, write detailed delegation prompts, wait for completion, merge artifacts, enforce protocol, and synthesize results. You do **not** substitute for specialists.
+
+**You MUST:**
+- Parse arguments, maintain state, persist artifacts, and run phase gates before advancing
+- At effort-scaled depth, produce an **Orchestration Decomposition Plan** (Phase 1b) before launching analysis specialists
+- Build `specialist_configs` deterministically, announce composition, spawn subagents, and block on completion
+- Merge/dedupe specialist outputs only — never invent findings, architecture judgments, or PR-scope decisions
+- Enforce 0-open-issues exit for design review and per-PR execute review
+- Own git/stack coordination during inline execute (Phase 5) per execute-plan protocol
+
+**You MUST NOT:**
+- Use `write`, `search_replace`, `delete`, or shell commands that modify **project source files** (except git conflict resolution during inline execute Phase 5, mirroring execute-plan)
+- Read the codebase to **produce analysis findings**, security audits, test-gap reports, or design-doc content yourself
+- Author specialist findings, assumption judgments, or the consolidated design document directly
+- Skip phases, skip wait protocols, or advance while required artifacts/subagents are incomplete
+- Skip tool calls while narrating subagent launches
+- Treat workflow steps as optional guidance — phases, gates, reviewers, and validation requirements are **normative**
+
+**Orchestrator-only writes** (allowed): `intent_brief_file`, `orchestration_plan_file`, merged `assumptions_file` / `analysis_merged_file`, `state_file`, `instructions_file`, execute-review merges, credential scrubbing, and chmod on orchestrator-owned artifacts.
+
+All substantive investigation and authoring is delegated to subagents with persona injection or prompt-only specialist templates.
 
 ## Tool-Call Discipline (Anti-Hallucination)
 
@@ -53,6 +73,7 @@ Open the run with a `todo_write` (`merge: false`) listing the canonical phases:
 |----|-------|
 | `setup` | Phase 0 |
 | `intent-discovery` | Phase 1 |
+| `orchestration-decomposition` | Phase 1b |
 | `assumption-analysis-pass-1` | Phase 2 pass 1 |
 | `assumption-analysis-pass-2` | Phase 2 pass 2 |
 | `assumption-escalation` | Optional Phase 2a |
@@ -77,6 +98,145 @@ Open the run with a `todo_write` (`merge: false`) listing the canonical phases:
 **Reseed after compaction** — rebuild from canonical ids + persisted artifact paths + `round_count` / `analysis_round_count` (same rule as `/implement`).
 
 Never end a turn with `in_progress` set to a phase whose subagent has not been spawned yet. Spawn first; then mark phases complete/in_progress in the next turn.
+
+## Protocol Enforcement & Phase Gates
+
+Normative advancement — mirror `/design`, `/implement`, and `/execute-plan`. **Partial compliance is failure.**
+
+### Global rules
+
+1. **One phase owner.** Exactly one canonical todo id is `in_progress` at a time (except parallel PR execute todos in Phase 5).
+2. **Gate before advance.** Before leaving a phase, run that phase's exit checklist. If any item fails, stay in-phase and fix — do not narrate forward progress.
+3. **Spawn-before-claim.** Any message that a subagent launched/resumed must pair with a `spawn_subagent` tool call in the same response (or tool result already in history).
+4. **Wait-before-merge.** After parallel specialist or reviewer batches, call `get_command_or_subagent_output(block=true)` for each task before reading outputs or merging.
+5. **Artifact existence.** Required output files must exist and be chmod `600` before the next phase starts.
+6. **Effort visibility.** At setup and each major phase transition, report `effort N` and what it changes (specialist count, decomposition depth, reviewer slots).
+
+### Phase gate matrix
+
+| Phase | Cannot advance until |
+|-------|----------------------|
+| 0 Setup | `BROWNFIELD_ID` valid; personas loaded fail-fast; `analysis_dir` created; memory snapshot attempted |
+| 1 Intent | `intent_brief_file` written; success criteria + scope actionable; open questions escalated or recorded |
+| 0b Source (optional) | When triggered: `source_merged_file` exists with full schema; Pass 0 spawns logged in `spawn_log_file` |
+| 1b Orchestration | `orchestration_plan_file` written per effort rules; every subtask row has `Est. input chars`, `Budget status`, `Transport mode`; `specialist_configs` built and announced; `spawn_log_file` initialized |
+| 2 Pass 1 | Pre-spawn budget gate passed for every spawn; all pass-1 specialists completed or required failures handled; checkpoint artifacts written |
+| 2 Pass 2 | All pass-2 specialists waited-on; merge complete; blocking assumptions evaluated |
+| 2a Escalation | No blocking assumptions remain (or scope narrowed per cap) |
+| 3 Design | Writer completed; `design_doc_file` + `summary_file` exist |
+| 4 Review | `design_review_file` has 0 open and 0 needs-user-input |
+| 4b Finalize | Key Decisions presented; execute handoff prepared if `--execute` |
+| 5 Execute | DAG complete per execute-plan gates; stack assembly reporting done |
+| 6 Verify | Verify subagent completed or failure recorded when `prs_completed >= 1` |
+
+### Violation handling
+
+If you catch yourself doing specialist work (e.g., listing code bugs without a subagent artifact): **stop**, spawn the appropriate specialist, and discard orchestrator-authored findings. If a phase was skipped: rewind todos, run the skipped phase, then continue.
+
+## Effort Model
+
+`--effort` (1–5) scales **orchestration depth**, **analysis breadth**, **design review rigor**, and **per-PR execute reviewers**. The delta between effort 1 and 5 must be **visible** in decomposition quality, specialist count, and coordination overhead.
+
+| Effort | Orchestration (Phase 1b) | Intent (Phase 1) | Analysis (Phase 2) | Design review (Phase 4) | Execute review (Phase 5 inline) |
+|--------|--------------------------|------------------|--------------------|-------------------------|----------------------------------|
+| 1 | Minimal plan: objective, 2–4 subtasks, pass-1/2 roster | AskQuestion or `[intent]` if thin | Architecture + Code only (+ intent keyword optionals) | Single reviewer loop until 0 | 1 general reviewer |
+| 2 | Standard plan: dependencies, risks, validation steps | **Must** spawn `[intent]` if brief incomplete | + Product-Intent pass 1, + Tests pass 2 | Reviewer loop until 0 | 2 reviewers (adaptive) |
+| 3 | Full plan: parallelization map, open questions, per-specialist focus | **Must** spawn `[intent]`; orchestrator synthesizes brief from subagent output | + Documentation pass 2; Excellence Doctrine injected | Reviewer loop + doctrine checklist | 3 reviewers (adaptive) |
+| 4 | Full plan + risk register + validation matrix | Same as 3 | + Security pass 2 | Same as 3 | 5 reviewers (typical: 3 general + tests + security) |
+| 5 | Max plan: bottleneck analysis, PR-risk preview, explicit parallel groups | Same as 3 | Dual code review (`code` + `code-2`); all effort-mandated optionals | Same as 3 | 6 reviewers (up to 3 general + tests + security + plan) |
+
+**Effort announcement (required):** After Phase 0, report one line: `"Brownfield run ${BROWNFIELD_ID}, effort N: <orchestration tier> orchestration, <pass-1 roster> → <pass-2 roster>, execute reviewers: <slots if --execute>"`.
+
+## Context Budget Protocol
+
+Normative transport layer for all sub-agent spawns. The orchestrator owns context budgeting — specialists receive **bounded, excerpt-only** payloads. **Partial compliance is failure.**
+
+### Cap constant
+
+**`CONTEXT_BUDGET_CAP_CHARS = 400,000`** (~100k tokens at ~4 chars/token). Hard cap on total sub-agent input: prompt + persona + injected files + excerpts + orchestration row references. Never silently truncate — chunk or escalate.
+
+### Pre-spawn estimation
+
+Before every `spawn_subagent`, estimate total input characters:
+- Persona file size (if injected)
+- Delegation prompt block (orchestrator-authored)
+- Intent brief excerpt (task-relevant sections only — not full file unless under cap)
+- Orchestration plan row + focus bullets for this specialist
+- Merged analysis excerpt (pass-2 only)
+- SKILL excerpt slice from registered excerpt registry (KD-013) — **never** full `SKILL.md`
+- Pass 0 merged principles excerpt (when applicable)
+
+Record estimate in Phase 1b subtask row `Est. input chars` and in spawn log before spawn.
+
+### Pre-spawn gate
+
+1. Compute estimate for target specialist
+2. If estimate ≤ 400,000 → `Budget status = OK`; proceed to spawn
+3. If estimate > 400,000 without chunk plan → **abort spawn**; do not proceed
+4. If estimate > 400,000 with documented chunk plan → `Budget status = CHUNK`; spawn chunk worker first
+5. If subtask must split across multiple specialists → `Budget status = SPLIT`; decompose in orchestration plan before spawn
+
+**Phase 1b exit gate:** Every subtask row must have `Est. input chars`, `Budget status`, and `Transport mode` populated. No row may advance to Phase 2 with `Est. input chars` > 400,000 unless `Budget status = CHUNK` with documented chunk plan in the orchestration plan.
+
+**Phase 2 entry gate:** All planned Phase 2 spawns must pass pre-spawn gate; spawn log must record gate outcomes before first analysis specialist launches.
+
+### Chunk-and-merge procedure
+
+When input exceeds cap:
+1. Decompose oversized artifact into chunks (by section, file range, or logical wedge)
+2. Spawn chunk worker(s) with **single-chunk** payloads each under cap
+3. Merge chunk outputs into excerpt artifact or orchestration-managed excerpt
+4. Re-run pre-spawn estimate on merged excerpt
+5. Only then spawn downstream specialist with excerpt-only handoff
+
+Never inline full oversized files into specialist prompts.
+
+### Spawn log
+
+**Path (normative):** `/tmp/grok-brownfield-spawn-log-${BROWNFIELD_ID}.md`
+
+Persist as orchestrator-owned artifact (chmod 600). Append entry **before each spawn** (including Pass 0 workers):
+
+| Field | Required |
+|-------|----------|
+| Timestamp | ISO-8601 |
+| Worker ID / Specialist | e.g., S-1, [architecture] |
+| Est. input chars | Pre-spawn estimate |
+| Budget gate | OK / CHUNK / SPLIT / ABORT |
+| Transport mode | excerpt-only / chunked-merge / persona-only |
+| Actual payload chars | Post-compose count (orchestrator records after prompt built) |
+| Chunk plan ref | If CHUNK — row ID or section ref |
+
+### Transport modes
+
+| Mode | Meaning |
+|------|---------|
+| `excerpt-only` | Persona + task-specific excerpts from intent, plan, analysis, SKILL registry — no full trunk files |
+| `chunked-merge` | Chunk worker(s) produced merged excerpt; downstream receives excerpt only |
+| `persona-only` | Persona + registered SKILL excerpts + minimal task block — no full artifacts inlined |
+
+### Excerpt-only downstream rule
+
+Orchestrator **MUST NOT inject full `SKILL.md`** (~103k chars) into any specialist prompt (KD-013). Use persona file + task-specific excerpt registry only — wedge-specific SKILL slices per specialist type (e.g., Architecture gets phase-gate + decomposition excerpts; Tests gets test-protocol excerpt; not the full 2,300-line trunk).
+
+Downstream specialists receive excerpts and path references, not full merged analysis, full design doc, or full SKILL trunk unless chunk plan explicitly requires chunk worker read of source file.
+
+### Overrun handling
+
+If post-compose payload exceeds 400,000 chars:
+1. **Do not spawn** — abort and chunk
+2. Document abort in spawn log with `Budget gate = ABORT`
+3. Escalate via orchestration plan update or `needs-user-input` if chunking infeasible
+4. **Never** silently truncate context to fit
+
+### SKILL excerpt registry (orchestrator-maintained)
+
+Register wedge-specific slices — not full SKILL:
+- Architecture: phase gates + decomposition excerpts
+- Tests: test-protocol excerpt
+- Execute reviewers: review-protocol excerpt
+
+Pre-spawn estimates must include excerpt slice sizes, not assume zero SKILL injection.
 
 ## Excellence Doctrine (First Principles)
 
@@ -162,7 +322,7 @@ Flags may appear anywhere in the argument string (not only prefix). Scan the ful
    - If `state_file` missing or corrupt JSON → reject: `"Cannot resume: state file not found or invalid"`
    - **Cross-check:** require `state.brownfield_id == BROWNFIELD_ID`; reject on mismatch: `"Cannot resume: state file brownfield_id mismatch"`
    - **Workspace validation:** verify `state.workspace_root` exists and `git -C "<workspace_root>" rev-parse --show-toplevel` matches stored value (or `pwd` for non-git); reject on mismatch: `"Cannot resume: workspace_root invalid or changed"`
-   - **Path allowlist validation** — before `read_file`, merge, or `chmod`, validate every persisted path field (`intent_brief_file`, `assumptions_file`, `design_doc_file`, `analysis_merged_file`, `instructions_file`, `exec_summary_glob` if set): must be absolute, contain no `..`, and match `/tmp/grok-brownfield-*` prefix (delegated `exec_summary_glob` may use `/tmp/grok-exec-summary-*`). Reject on failure: `"Cannot resume: invalid artifact path in state file"`
+   - **Path allowlist validation** — before `read_file`, merge, or `chmod`, validate every persisted path field (`intent_brief_file`, `orchestration_plan_file`, `assumptions_file`, `design_doc_file`, `analysis_merged_file`, `instructions_file`, `exec_summary_glob` if set): must be absolute, contain no `..`, and match `/tmp/grok-brownfield-*` prefix (delegated `exec_summary_glob` may use `/tmp/grok-exec-summary-*`). Reject on failure: `"Cannot resume: invalid artifact path in state file"`
    - Validate `execute_plan_id` (if present) matches `^[0-9a-f]{8}$`; reject invalid IDs before any path interpolation
    - **chmod 600** all validated artifact paths listed in `state_file` plus `state_file` itself (legacy runs may predate chmod)
    - **Re-validate `dag` nodes on resume:** each `pr.id` must match `^[a-z0-9-]+$`; each `pr.branch` must match `^brownfield/<BROWNFIELD_ID>-[0-9]+-[a-z0-9-]+$`; reject on failure
@@ -237,6 +397,7 @@ All paths use fixed prefix `/tmp/grok-brownfield-` + validated `${BROWNFIELD_ID}
 | Variable | Path | Writer | Persist? |
 |----------|------|--------|----------|
 | `intent_brief_file` | `/tmp/grok-brownfield-intent-${BROWNFIELD_ID}.md` | Intent / orchestrator | Yes |
+| `orchestration_plan_file` | `/tmp/grok-brownfield-orchestration-${BROWNFIELD_ID}.md` | Orchestrator | Yes |
 | `assumptions_file` | `/tmp/grok-brownfield-assumptions-${BROWNFIELD_ID}.md` | Orchestrator (merged) | Yes |
 | `analysis_dir` | `/tmp/grok-brownfield-analysis-${BROWNFIELD_ID}/` | Specialists | Optional cleanup |
 | `analysis_merged_file` | `/tmp/grok-brownfield-analysis-merged-${BROWNFIELD_ID}.md` | Orchestrator | Yes |
@@ -251,6 +412,8 @@ All paths use fixed prefix `/tmp/grok-brownfield-` + validated `${BROWNFIELD_ID}
 | Per-PR exec summary | `/tmp/grok-brownfield-exec-summary-${BROWNFIELD_ID}-{pr-id}.md` | Implementer | Cleanup post-execute |
 | Per-PR exec review (merged) | `/tmp/grok-brownfield-exec-review-${BROWNFIELD_ID}-{pr-id}.md` | Orchestrator (merged) | Cleanup post-execute |
 | Per-PR exec review (individual) | `/tmp/grok-brownfield-exec-review-${BROWNFIELD_ID}-{pr-id}-{suffix}.md` | Reviewer | Cleanup post-execute |
+| `spawn_log_file` | `/tmp/grok-brownfield-spawn-log-${BROWNFIELD_ID}.md` | Orchestrator | Yes |
+| `source_merged_file` | `/tmp/grok-brownfield-source-merged-${BROWNFIELD_ID}.md` | Orchestrator (Pass 0 merge) | Yes when Phase 0b runs |
 
 **Thread paths across all rounds.** Never regenerate `BROWNFIELD_ID` mid-run.
 
@@ -373,6 +536,7 @@ Run `python3 <memory_helper_path> snapshot` from `workspace_root`. Parse JSON; s
   existing_patterns_snapshot: [],
   memory_existed_before: false,
   intent_subagent_id: null,
+  orchestration_plan_written: false,
   writer_subagent_id: null,
   design_reviewer_subagent_id: null,
   bundled_skills_root: "",
@@ -392,6 +556,50 @@ Run `python3 <memory_helper_path> snapshot` from `workspace_root`. Parse JSON; s
 ```
 
 Report: `"Brownfield run ${BROWNFIELD_ID}, effort N, execute: true/false"`
+
+## Phase 0b: Source Principles Ingestion (optional)
+
+**Trigger:** User supplies external principle/source files in intent (books, transcripts, manuals, founder notes).
+
+**Skip when:** No external sources listed in user intent — proceed directly to Phase 1.
+
+### Procedure
+
+1. List source files from user intent; decompose into chunk workers (worker count = orchestrator decomposition of user-listed files, not fixed)
+2. Each worker reads assigned file(s) or file chunk in full; writes per-file principles
+3. Orchestrator merges into normative artifact at `/tmp/grok-brownfield-source-merged-${BROWNFIELD_ID}.md` (chmod 600)
+4. Record Pass 0 spawns in `spawn_log_file` before each worker launch
+5. Downstream specialists receive **excerpts** from merged artifact only — orchestrator never inlines full sources into specialist prompts
+
+**Worker mapping example (run 43aa4b60):** 6 user files → 4 workers (S-1..S-4): book split across S-1/S-2, manual S-3, transcripts S-4; merged artifact is the downstream invariant, not worker cardinality.
+
+### Merged artifact schema
+
+```markdown
+# Source Principles (Merged)
+
+## Source Inventory
+| File | Path | Char count | Worker ID |
+|------|------|------------|-----------|
+
+## Per-File Principles
+### <source-file-name>
+...
+
+## Cross-Source Synthesis
+(Deduped principles mapped to FP-* / SKILL destinations)
+
+## Coverage Attestation
+| File | read_in_full | chunk_count |
+|------|--------------|-------------|
+| ... | true | N |
+```
+
+### Exit gate
+
+When intent lists external sources, Phase 0b cannot complete without merged artifact at normative path with all required schema sections. Every listed file must have `read_in_full: true` with chunk count in Coverage Attestation.
+
+Report: `"Source principles merged (N files, M workers). Proceeding to intent discovery..."`
 
 ## Phase 1: Intent Discovery
 
@@ -449,20 +657,110 @@ What would this system look like if built correctly from axioms, ignoring sunk c
 
 ### Execution
 
-**Option A:** Orchestrator uses AskQuestion directly when user input is thin.
+**Effort 1:** Orchestrator may use AskQuestion directly when user input is thin; spawn `[intent]` when conversation already has rich context.
 
-**Option B:** Spawn `[intent]` subagent when conversation has rich context.
+**Effort ≥ 2:** **Must** spawn `[intent]` subagent (background: false). Orchestrator may use AskQuestion only to fill gaps the subagent flags. Do not author the full brief from orchestrator codebase reads.
 
 Minimum questions if incomplete: outcome goal, what works vs broken, off-limits areas, success in one sentence.
+
+`spawn_subagent` for `[intent]`:
+- `subagent_type`: `"general-purpose"`
+- `description`: `"[intent] Capture brownfield intent brief"`
+- Prompt: read `project_context` + conversation; write `intent_brief_file` per schema; chmod 600; list open questions.
 
 ### Exit
 
 - Open `Open Questions` → escalate via `needs-user-input`, update brief, continue
-- Actionable success criteria + scope → Phase 2
+- Actionable success criteria + scope → Phase 1b (not Phase 2 directly)
+
+Report: `"Intent brief captured. Building orchestration decomposition plan (effort N)..."`
+
+## Phase 1b: Orchestration Decomposition
+
+**Normative:** Run after Phase 1, before any analysis specialist spawns. This is the orchestrator's primary planning phase — decompose work, assign agents, identify dependencies/risks, and define validation gates. **Do not launch Phase 2 until this phase completes.**
+
+Read `intent_brief_file`. Build `specialist_configs` using the Phase 2 slot algorithm (deterministic — compute now, launch in Phase 2). Write `orchestration_plan_file` (chmod 600).
+
+### Orchestration Plan schema
+
+```markdown
+# Orchestration Decomposition Plan
+
+## Metadata
+- **Run ID**: ${BROWNFIELD_ID}
+- **Effort**: <1-5>
+- **Execute**: <true|false>
+
+## Objective (one paragraph)
+...
+
+## Subtask Decomposition
+| ID | Subtask | Assigned agent | Depends on | Est. input chars | Budget status | Transport mode | Validation gate |
+|----|---------|----------------|------------|------------------|---------------|----------------|-----------------|
+| T-1 | ... | [architecture] | — | 85000 | OK | excerpt-only | architecture.md exists |
+| T-2 | ... | [code] | T-1 | 120000 | OK | excerpt-only | code.md exists |
+
+## Specialist Roster (computed)
+### Pass 1
+- ...
+### Pass 2
+- ...
+
+## Parallelization
+- **Pass 1 parallel group**: ...
+- **Pass 2 parallel group**: ...
+- **Sequential gates**: pass 1 → checkpoint → pass 2
+
+## Dependencies & Risks
+| ID | Risk | Mitigation | Owner |
+|----|------|------------|-------|
+
+## Open Questions (Orchestration)
+| ID | Question | Blocks | Status |
+|----|----------|--------|--------|
+
+## Validation Checklist (pre-Phase 3)
+- [ ] Required specialists succeeded
+- [ ] Blocking assumptions escalated or resolved
+- [ ] Merged analysis covers all FP-* axioms from intent brief
+```
+
+**Effort-specific required sections:**
+
+| Effort | Required depth |
+|--------|----------------|
+| 1 | Objective, Subtask table (≥2 rows), Specialist Roster, Parallelization (1 line each) |
+| 2 | + Dependencies & Risks (≥2 rows), Validation Checklist |
+| 3 | + per-specialist focus bullets (2–3 each), Open Questions table |
+| 4 | + Risk register (≥4 rows), validation matrix mapping success criteria → specialists |
+| 5 | + bottleneck hypothesis, PR-risk preview if `--execute`, explicit parallel groups with rationale; **every** subtask row must have `Est. input chars`, `Budget status`, and `Transport mode` populated before Phase 2 |
+
+Set `orchestration_plan_written = true`.
+
+### Delegation prompt rule
+
+When spawning any specialist in Phase 2+, include in every prompt:
+1. Paths: `intent_brief_file`, `orchestration_plan_file` (excerpt references — not full inline unless under budget)
+2. This subtask's row from **Subtask Decomposition** (ID, validation gate, `Est. input chars`, `Budget status`, `Transport mode`)
+3. Effort-scaled focus bullets from **Specialist Roster** (effort ≥ 3)
+4. Excellence Doctrine block when `effort >= 3`
+5. **Pre-spawn budget check:** confirm composed prompt ≤ 400,000 chars; record estimate in `spawn_log_file` before spawn
+6. **Excerpt-only handoff:** persona + registered SKILL excerpts + task excerpts — orchestrator **MUST NOT inject full `SKILL.md`** into any specialist prompt (KD-013)
+
+### Exit
+
+- `orchestration_plan_file` exists and meets effort depth table
+- Every subtask row has `Est. input chars`, `Budget status`, `Transport mode` populated (required at effort 5 for **every** row)
+- No row with `Est. input chars` > 400,000 unless `Budget status = CHUNK` with documented chunk plan
+- `spawn_log_file` initialized at `/tmp/grok-brownfield-spawn-log-${BROWNFIELD_ID}.md`
+- Over-budget rows without CHUNK plan block Phase 2 advance
+- Blocking orchestration open questions → AskQuestion, update plan, continue
+→ Phase 2
 
 Report (effort-dependent):
-- Effort 1: `"Intent brief captured. Starting analysis pass 1 (Architecture)..."`
-- Effort ≥2: `"Intent brief captured. Starting analysis pass 1 (Architecture + Product-Intent)..."`
+- Effort 1: `"Orchestration plan ready (minimal). Starting analysis pass 1 (Architecture)..."`
+- Effort ≥2: `"Orchestration plan ready. Starting analysis pass 1 (Architecture + Product-Intent)..."`
+- Effort ≥4: include risk count: `"Orchestration plan ready (N risks tracked). Starting pass 1..."`
 
 ## Phase 2: Assumption-Aware Analysis
 
@@ -582,7 +880,9 @@ for spec in selected_optional:
     persona_to_inject: PERSONA_MAP[spec], output_file: .../{spec}.md, background: true })
 ```
 
-Announce pass-1 and pass-2 compositions once, then launch.
+**Pre-launch gate:** Confirm `orchestration_plan_written == true` and `orchestration_plan_file` exists. If false, return to Phase 1b — do not improvise roster at launch time.
+
+Announce pass-1 and pass-2 compositions once (must match orchestration plan roster), then launch.
 
 ### Wait for Completion (after each parallel pass)
 
@@ -695,6 +995,10 @@ Apply **Excellence Doctrine (First Principles)** from the brownfield skill: deco
 ## Intent Brief
 Read: <intent_brief_file>
 
+## Orchestration Plan
+Read: <orchestration_plan_file>
+Your subtask: <T-ID from Subtask Decomposition for [architecture]>
+
 ## Your Task
 - Reconstruct **intended** architecture from Intent Brief axioms and platonic ideal — then diff against observed code
 - Module boundaries, layering, circular dependencies
@@ -740,6 +1044,10 @@ CRITICAL: Do not rationalize existing behavior as correct because code exists.
 ## Intent Brief
 Read: <intent_brief_file>
 
+## Orchestration Plan
+Read: <orchestration_plan_file>
+Your subtask: <T-ID from Subtask Decomposition for [product-intent]>
+
 ## Your Task
 - Map user-visible flows to code paths
 - Contradictions vs Intent Brief / user expectations
@@ -762,6 +1070,8 @@ Launch: `description: "[product-intent] Product-intent validation"`, `background
 You are auditing documentation fidelity. Pass 2 — pass-1 analysis complete.
 
 ## Intent Brief: <intent_brief_file>
+## Orchestration Plan: <orchestration_plan_file>
+Your subtask: <T-ID for [documentation]>
 ## Pass-1 Context
 Read: <analysis_dir>/architecture.md
 Read if present: <analysis_dir>/product-intent.md
@@ -793,13 +1103,15 @@ Brownfield CODE analysis — existing codebase (not a diff). Pass 2.
 Apply Excellence Doctrine: question whether code matches axioms/platonic ideal, not just style. Flag hot-path latency issues and structural waste (high idiot index).
 
 ## Intent Brief: <intent_brief_file>
+## Orchestration Plan: <orchestration_plan_file>
+Your subtask: <T-ID for [code] or [code-2]>
 ## Pass-1 Context
 Read: <analysis_dir>/architecture.md
 Read if present: <analysis_dir>/product-intent.md
 Read: <assumptions_file>
 
 ## Scope
-Prioritize Intent Brief + Architecture findings + Limits Analysis.
+Prioritize Intent Brief + Orchestration focus bullets + Architecture findings + Limits Analysis.
 
 ## Assumption discipline
 Record inferences with confidence; challenge pass-1 assumptions if code contradicts.
@@ -831,6 +1143,8 @@ You are a thorough test engineer analyzing a brownfield codebase.
 CRITICAL: Existing tests are EVIDENCE, not proof of adequate coverage. Green CI does not mean intent is validated.
 
 ## Intent Brief: <intent_brief_file>
+## Orchestration Plan: <orchestration_plan_file>
+Your subtask: <T-ID for [tests]>
 ## Pass-1 Context
 Read: <analysis_dir>/architecture.md
 Read if present: <analysis_dir>/product-intent.md
@@ -879,6 +1193,8 @@ Use ONLY bug/suggestion/nit and Issue format below.
 Analyze brownfield codebase for security issues. Pass 2.
 
 ## Intent Brief: <intent_brief_file>
+## Orchestration Plan: <orchestration_plan_file>
+Your subtask: <T-ID for [security]>
 ## Pass-1 Context
 Read: <analysis_dir>/architecture.md
 Read if present: <analysis_dir>/product-intent.md
@@ -1947,13 +2263,14 @@ When `delegate_execute_flag` is true:
 
 1. Read bundled `execute_plan_skill_path` via `read_file`
 2. Read `instructions_file`; store as `user_instructions`
-3. Follow execute-plan as nested orchestrator — do **not** merely echo a slash command
-4. Invoke with **file-only instructions** (no secrets in argv):
+3. **Context-budget check:** Before nested `/execute-plan`, estimate total handoff payload (`instructions_file` excerpts + `design_doc_file` excerpts + persona). If > 400,000 chars, chunk into excerpt artifacts — **excerpt-only handoff** to nested orchestrator; never pass full design doc or instructions inline if over cap. Record in `spawn_log_file` (spawn-log continuity with prior phases).
+4. Follow execute-plan as nested orchestrator — do **not** merely echo a slash command
+5. Invoke with **file-only instructions** (no secrets in argv):
    ```
    /execute-plan <design_doc_file> --effort 1 --concurrency <max_concurrent> --instructions-file <instructions_file>
    ```
    If `--instructions-file` unsupported, use `--instructions` with path reference only: `"See instructions at <instructions_file>"` — never embed scrubbed content in process args.
-5. Forward flags when set: append `--no-graphite` if `no_graphite_flag`; append `--auto-pr` if `auto_pr_flag`
+6. Forward flags when set: append `--no-graphite` if `no_graphite_flag`; append `--auto-pr` if `auto_pr_flag`
 
 **Delegation start persistence:** When execute-plan Setup reports `PLAN_ID`, immediately persist `execute_plan_id`, `phase: "execute_delegated"`, `exec_summary_glob: "/tmp/grok-exec-summary-${execute_plan_id}-*.md"`; `chmod 600` state_file.
 
@@ -2063,30 +2380,33 @@ rm -f /tmp/grok-brownfield-*-${BROWNFIELD_ID}*  # removes all run artifacts for 
 
 Present after memory flush. Read deliverables before cleanup.
 
-### Required bullets (14)
+### Required bullets (15)
 
 1. **Run metadata** — `BROWNFIELD_ID`, effort, `--execute`, `project_context`, `workspace_root`
 2. **Intent brief** — path; 1-line goal
-3. **Assumptions summary** — counts; non-blocking low-confidence items
-4. **Analysis** — `analysis_merged_file`; specialist composition; `analysis_round_count`
-5. **Design document** — `design_doc_file`
-6. **Design review stats** — `round_count`; `total_issues_by_severity`
-7. **Key Decisions** — excerpt
-8. **Open Questions** — resolved or none
-9. **PR Plan** — summary or path
-10. **Execution** — PRs completed/failed/skipped; `execute_plan_id` if delegated; resume command by `phase`
-11. **Verification** — verify file path; Intent Traceability Matrix + success criteria table (or "skipped — 0 PRs completed")
-12. **Memory update** — patterns; path; created vs updated
-13. **Cleanup** — removed vs retained; manual scrub command
-14. **Suggested follow-ups** — `/brownfield --execute --effort N`, `/brownfield --resume <BROWNFIELD_ID>` (inline), `/execute-plan --resume <id>` (delegated), `/implement`
+3. **Orchestration plan** — `orchestration_plan_file`; subtask count; risks tracked
+4. **Assumptions summary** — counts; non-blocking low-confidence items
+5. **Analysis** — `analysis_merged_file`; specialist composition; `analysis_round_count`
+6. **Design document** — `design_doc_file`
+7. **Design review stats** — `round_count`; `total_issues_by_severity`
+8. **Key Decisions** — excerpt
+9. **Open Questions** — resolved or none
+10. **PR Plan** — summary or path
+11. **Execution** — PRs completed/failed/skipped; `execute_plan_id` if delegated; resume command by `phase`
+12. **Verification** — verify file path; Intent Traceability Matrix + success criteria table (or "skipped — 0 PRs completed")
+13. **Memory update** — patterns; path; created vs updated
+14. **Cleanup** — removed vs retained; manual scrub command
+15. **Suggested follow-ups** — `/brownfield --execute --effort N`, `/brownfield --resume <BROWNFIELD_ID>` (inline), `/execute-plan --resume <id>` (delegated), `/implement`
 
 ## In-Progress Reporting
 
 | Event | Message |
 |-------|---------|
-| Setup | `"Brownfield run ${BROWNFIELD_ID}, effort N, execute: true/false"` |
-| Intent (effort 1) | `"Intent brief captured. Starting analysis pass 1 (Architecture)..."` |
-| Intent (effort ≥2) | `"Intent brief captured. Starting analysis pass 1 (Architecture + Product-Intent)..."` |
+| Setup | `"Brownfield run ${BROWNFIELD_ID}, effort N: <tier> orchestration, <rosters>, execute reviewers: <slots>"` |
+| Intent | `"Intent brief captured. Building orchestration decomposition plan (effort N)..."` |
+| Orchestration (effort 1) | `"Orchestration plan ready (minimal). Starting analysis pass 1 (Architecture)..."` |
+| Orchestration (effort ≥2) | `"Orchestration plan ready. Starting analysis pass 1 (Architecture + Product-Intent)..."` |
+| Orchestration (effort ≥4) | `"Orchestration plan ready (N risks tracked). Starting pass 1..."` |
 | Pass 1 done | `"Pass 1 complete. Starting analysis pass 2 (K specialists)..."` |
 | Analysis merge | `"Analysis complete. N assumptions (W need confirmation)."` |
 | Escalation | `"Assumption A-### needs your input."` |
@@ -2103,6 +2423,11 @@ Present after memory flush. Read deliverables before cleanup.
 
 ## Rules
 
+- **Orchestrator identity** — coordinate only; specialists investigate and author; orchestrator plans, delegates, merges, enforces gates
+- **Context budget protocol** — 400,000-char cap; pre-spawn gate; excerpt-only downstream; never inject full SKILL.md; spawn log at `spawn_log_file`
+- **Protocol enforcement** — phase gates are normative; violation → rewind and run skipped phase
+- **Orchestration decomposition** — Phase 1b required before analysis; effort scales plan depth; budget columns on every subtask row
+- **Effort model** — visible delta 1→5 in plan depth, specialist roster, reviewer slots
 - **Excellence Doctrine** — first-principles decomposition, limits thinking, 0 open issues, bottleneck-first PR plans
 - **Tool-call discipline** — paired `spawn_subagent` for every launch claim
 - **Bundled path resolution** — `bundled_skills_root` algorithm; never `../shared/personas` from user scope

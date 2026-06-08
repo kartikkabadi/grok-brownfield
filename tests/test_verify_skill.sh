@@ -97,6 +97,22 @@ sed -i '' '/chmod 600/d' "${NO_CHMOD_DIR}/SKILL.md" 2>/dev/null \
   || sed -i '/chmod 600/d' "${NO_CHMOD_DIR}/SKILL.md"
 expect_fail "missing chmod 600" "chmod 600" bash "${NO_CHMOD_DIR}/scripts/verify_skill.sh"
 
+# --- Dropped Context Budget Protocol section (NO_CONTEXT_BUDGET) ---
+NO_CONTEXT_BUDGET_DIR="${TMPROOT}/no-context-budget"
+mkdir -p "${NO_CONTEXT_BUDGET_DIR}/scripts"
+cp "${VERIFY}" "${NO_CONTEXT_BUDGET_DIR}/scripts/verify_skill.sh"
+cp "${RESOLVE}" "${NO_CONTEXT_BUDGET_DIR}/scripts/resolve_bundled_root.sh"
+chmod +x "${NO_CONTEXT_BUDGET_DIR}/scripts/resolve_bundled_root.sh"
+cp -R "${SKILL_DIR}/fixtures" "${NO_CONTEXT_BUDGET_DIR}/fixtures"
+cp "${SOURCE_SKILL}" "${NO_CONTEXT_BUDGET_DIR}/SKILL.md"
+sed -i '' '/^## Context Budget Protocol$/,/^## Excellence Doctrine$/{
+  /^## Excellence Doctrine$/!d
+}' "${NO_CONTEXT_BUDGET_DIR}/SKILL.md" 2>/dev/null \
+  || sed -i '/^## Context Budget Protocol$/,/^## Excellence Doctrine$/{
+    /^## Excellence Doctrine$/!d
+  }' "${NO_CONTEXT_BUDGET_DIR}/SKILL.md"
+expect_fail "NO_CONTEXT_BUDGET" "Context Budget Protocol" bash "${NO_CONTEXT_BUDGET_DIR}/scripts/verify_skill.sh"
+
 # --- Dropped wait protocol ---
 NO_WAIT_DIR="${TMPROOT}/no-wait"
 mkdir -p "${NO_WAIT_DIR}/scripts"
@@ -259,8 +275,8 @@ cp "${RESOLVE}" "${LOW_BULLETS_DIR}/scripts/resolve_bundled_root.sh"
 chmod +x "${LOW_BULLETS_DIR}/scripts/resolve_bundled_root.sh"
 cp -R "${SKILL_DIR}/fixtures" "${LOW_BULLETS_DIR}/fixtures"
 cp "${SOURCE_SKILL}" "${LOW_BULLETS_DIR}/SKILL.md"
-sed -i '' '/^5\. \*\*Design document\*\*/,/^14\. \*\*/d' "${LOW_BULLETS_DIR}/SKILL.md" 2>/dev/null \
-  || sed -i '/^5\. \*\*Design document\*\*/,/^14\. \*\*/d' "${LOW_BULLETS_DIR}/SKILL.md"
+sed -i '' '/^6\. \*\*Design document\*\*/,/^15\. \*\*/d' "${LOW_BULLETS_DIR}/SKILL.md" 2>/dev/null \
+  || sed -i '/^6\. \*\*Design document\*\*/,/^15\. \*\*/d' "${LOW_BULLETS_DIR}/SKILL.md"
 expect_fail "Final Report bullet floor" "Final Report needs" bash "${LOW_BULLETS_DIR}/scripts/verify_skill.sh"
 
 # --- Missing bundled_skills_root (no HOME bundle and no repo fixture) ---
