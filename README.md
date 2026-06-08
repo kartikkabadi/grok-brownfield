@@ -124,9 +124,13 @@ Examples:
 
 ```mermaid
 flowchart TD
-    A["/brownfield invocation"] --> B["Phase 0: Setup<br/>umask, run ID, personas"]
-    B --> C["Phase 1: Intent Discovery<br/>What should this project do?"]
-    C --> D["Phase 2: Assumption-Aware Analysis<br/>Parallel specialists (architecture, code, tests, security, docs)"]
+    A["/brownfield invocation"] --> B["Phase 0: Setup<br/>run ID, personas, artifact paths"]
+    B --> B0{"External source files?"}
+    B0 -->|Yes| B1["Phase 0b: Source Principles Ingestion (optional)<br/>chunked readers → merged artifact"]
+    B0 -->|No| C
+    B1 --> C["Phase 1: Intent Discovery<br/>What should this project do?"]
+    C --> C1["Phase 1b: Orchestration Decomposition<br/>subtask table + context budget gate"]
+    C1 --> D["Phase 2: Assumption-Aware Analysis<br/>Parallel specialists (pre-spawn gate ≤400k chars)"]
     D --> E{"Blocking assumptions?"}
     E -->|Yes| F["Phase 2a: Escalation<br/>Ask user to confirm"]
     E -->|No| G["Phase 3: Consolidated Design Doc<br/>Gaps, risks, PR plan DAG"]
@@ -140,12 +144,17 @@ flowchart TD
     M --> K
 ```
 
+**Context budget:** Every specialist spawn is capped at **400,000 characters** (~100k tokens). Phase 1b records per-subtask estimates; the orchestrator runs a **pre-spawn gate** before launch and logs outcomes in the spawn log. Over-budget payloads are chunked or split — never silently truncated. Full `SKILL.md` is never injected into specialist prompts (persona + excerpt-only transport).
+
 **Deliverables** (kept by default under `/tmp/grok-brownfield-*`):
 
 - Intent brief
 - Assumptions register
+- **Orchestration plan** (Phase 1b subtask decomposition)
+- **Spawn log** (pre-spawn estimates vs 400k cap per specialist)
 - Merged analysis
 - **Design document** (main output) with PR plan
+- Optional source-merged artifact when Phase 0b runs
 - Optional verify report after `--execute`
 
 ---

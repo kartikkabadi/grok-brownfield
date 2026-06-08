@@ -15,6 +15,17 @@ Brief guidance for AI agents editing **grok-brownfield**.
 4. Resume path validation (`brownfield_id`, workspace_root, artifact allowlist) must stay strict
 5. When adding normative behavior, add a matching pattern to `scripts/verify_skill.sh`
 
+## Protocol-update checklist
+
+When changing normative transport or phase behavior in `SKILL.md`, apply all four steps in order:
+
+1. **SKILL.md** — encode the normative section (e.g. Context Budget Protocol, Phase 1b columns, Delegation prompt rule). Cite line ranges; do not inline the full skill in prompts.
+2. **`scripts/verify_skill.sh`** — add or update anchored grep patterns that fail if the section is removed or hollowed out.
+3. **`tests/test_verify_skill.sh`** — add a negative test that strips the section and expects verify failure (pattern: `NO_CONTEXT_BUDGET`).
+4. **`README.md`** — update mermaid, deliverables, or workflow description if the change is user-facing (phases, flags, context budget, artifacts).
+
+Skip step 4 only for purely internal wiring with no contributor or end-user visibility.
+
 ## Verification workflow
 
 Always run from repo root:

@@ -72,6 +72,27 @@ bash tests/test_verify_skill.sh
 - **Frontmatter quality** (description wording, flag ordering) is intentionally out-of-scope beyond presence checks.
 - **Skills-list override** persona resolution is a known limitation — only bundled fallback paths are tested.
 
+### Context budget verify patterns
+
+When changing transport-layer behavior in `SKILL.md`, keep `scripts/verify_skill.sh` greps aligned. Required patterns (see `verify_skill.sh` for the canonical list):
+
+| Pattern / anchor | What it guards |
+|------------------|----------------|
+| `^## Context Budget Protocol` | Normative transport section exists |
+| `400,?000\|400000` | Hard cap constant documented |
+| `pre-spawn` | Pre-spawn gate before specialist launch |
+| `spawn log` / `spawn_log_file` / `grok-brownfield-spawn-log` | Spawn log artifact wiring |
+| `excerpt-only` | Downstream handoff uses excerpts, not full artifacts |
+| `MUST NOT inject full.*SKILL\|never.*full SKILL` | Full SKILL.md injection prohibited |
+| `Phase 0b\|Source Principles Ingestion` | Optional Pass 0 chunked source ingestion |
+| `grok-brownfield-source-merged` | Merged source artifact path |
+| `Est\. input chars`, `Budget status`, `Transport mode` | Phase 1b budget columns |
+| Delegated Execution Path + `context budget` + `excerpt-only` + `instructions_file` | Nested `/execute-plan` handoff parity |
+
+**Negative test:** `tests/test_verify_skill.sh` includes `NO_CONTEXT_BUDGET` — stripping the Context Budget Protocol section must fail verify. Add or update a negative test when introducing a new normative protocol section.
+
+**Security trunk** (replaces deprecated chmod/umask ceremony): Context Budget Protocol, path allowlist (`/tmp/grok-brownfield-*`), and `[REDACTED]` redaction — all three must remain verified.
+
 ### SKIP behavior
 
 `test_verify_skill.sh` may print `SKIP` for the unreadable-cwd `memory.py` test on permissive filesystems. SKIP is not a failure. If you change memory path logic, run that test on a stricter environment or add an explicit regression case.
@@ -81,7 +102,10 @@ bash tests/test_verify_skill.sh
 - [ ] `bash scripts/verify_skill.sh` passes
 - [ ] `bash tests/test_verify_skill.sh` passes
 - [ ] No secrets or personal paths in diff
-- [ ] README updated if user-facing flags, phases, or install steps change
+- [ ] **Normative SKILL change** → matching `verify_skill.sh` grep pattern added or updated
+- [ ] **New protocol section** → negative regression test in `test_verify_skill.sh` (e.g. `NO_CONTEXT_BUDGET`)
+- [ ] **User-facing phases, flags, deliverables, or transport behavior** → `README.md` updated
+- [ ] Context budget / path allowlist / redaction trunk not weakened
 - [ ] Clear commit message (what + why)
 
 ## Reporting issues
